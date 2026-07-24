@@ -115,12 +115,17 @@ def main():
                             help="owner/repo (default: varunowns/AI-OS)")
             sp.add_argument("--count", type=int, default=10,
                             help="Number of commits to fetch (default: 10)")
+        elif event_name == "learning.digest":
+            sp.add_argument("--tag", default="learning", help="Tag to search for (default: learning)")
+            sp.add_argument("--out", help="Where to write the digest (optional)")
         elif event_name == "note.toimage":
             sp.add_argument("note", help="Path to the note, relative to vault root")
         elif event_name == "note.search":
             sp.add_argument("query", help="Search query")
         # Many commands support --out
-        sp.add_argument("--out", help="Where to write the result (optional)")
+        # digest has its own arg setup
+        if event_name != "learning.digest":
+            sp.add_argument("--out", help="Where to write the result (optional)")
 
         # search also has --top-k
         if event_name == "note.search":
@@ -141,6 +146,10 @@ def main():
 
         if event_name == "note.summarize":
             payload["source_note"] = args.note
+            if args.out:
+                payload["output_note"] = args.out
+        elif event_name == "learning.digest":
+            payload["tag"] = args.tag
             if args.out:
                 payload["output_note"] = args.out
         elif event_name == "note.toimage":

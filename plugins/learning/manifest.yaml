@@ -1,0 +1,23 @@
+name: learning
+version: 0.1.0
+description: >
+  Reads notes tagged #learning, summarizes concepts learned this week,
+  and writes a weekly digest note with spaced-repetition follow-up
+  questions.
+
+# Events this plugin listens to
+subscribes:
+  - learning.digest
+
+# Events this plugin can emit
+publishes:
+  - note.written
+
+# CLI commands this plugin exposes
+commands: digest:learning.digest:Generate a weekly learning digest with review questions
+
+# Permissions this plugin declares
+permissions: vault:read, vault:write, llm:call
+config:
+  learning_tag: learning
+  digest_folder: Learning/Digests
