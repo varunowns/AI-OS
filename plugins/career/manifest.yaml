@@ -12,6 +12,9 @@ subscribes:
 publishes:
   - note.summarized
 
+# CLI commands this plugin exposes
+commands: summarize:note.summarize:Summarize a vault note
+
 # Permissions this plugin declares
 permissions: vault:read, vault:write, llm:call
 

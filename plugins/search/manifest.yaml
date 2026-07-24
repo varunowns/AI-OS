@@ -1,0 +1,21 @@
+name: search
+version: 0.1.0
+description: >
+  Semantic search over vault notes: embed a query and return the most
+  relevant notes ranked by cosine similarity.
+
+# Events this plugin listens to
+subscribes:
+  - note.search
+  - note.reindex
+
+# Events this plugin can emit
+publishes:
+  - note.search.results
+
+# CLI commands this plugin exposes
+commands: search:note.search:Search vault notes semantically
+
+# Permissions this plugin declares
+permissions: vault:read, vault:write
+config: {}

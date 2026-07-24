@@ -1,9 +1,13 @@
 {
   "permissions": {
     "allow": [
+      "Bash(find *)",
+      "Bash(mkdir *)",
       "PowerShell(pip install *)",
       "PowerShell(python main.py *)",
+      "PowerShell(python -W ignore main.py *)",
       "PowerShell(python -m pytest *)",
+      "PowerShell(python -W ignore -m pytest *)",
       "PowerShell(git init *)",
       "PowerShell(git add *)",
       "PowerShell(git commit *)",
@@ -12,7 +16,10 @@
       "PowerShell(gh repo create *)",
       "PowerShell(gh auth status *)",
       "PowerShell(New-Item *)",
-      "PowerShell(Move-Item *)"
+      "PowerShell(Move-Item *)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(Remove-Item *)",
+      "PowerShell(Test-Path *)"
     ]
   }
 }
