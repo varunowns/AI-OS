@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(pip install *)",
+      "PowerShell(python main.py *)",
+      "PowerShell(python -m pytest *)",
+      "PowerShell(git init *)",
+      "PowerShell(git add *)",
+      "PowerShell(git commit *)",
+      "PowerShell(git push *)",
+      "PowerShell(git remote *)",
+      "PowerShell(gh repo create *)",
+      "PowerShell(gh auth status *)",
+      "PowerShell(New-Item *)",
+      "PowerShell(Move-Item *)"
+    ]
+  }
+}

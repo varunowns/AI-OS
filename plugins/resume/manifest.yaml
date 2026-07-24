@@ -1,0 +1,17 @@
+name: resume
+version: 0.1.0
+description: >
+  Reads a resume note from the vault and, using recent career summaries
+  from the SQLite index, suggests concrete edits or additions.
+
+# Events this plugin listens to
+subscribes:
+  - resume.review
+
+# Events this plugin can emit
+publishes:
+  - note.written
+
+# Permissions this plugin declares
+permissions: vault:read, vault:write, llm:call
+config: {}

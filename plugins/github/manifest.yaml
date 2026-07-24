@@ -1,0 +1,19 @@
+name: github
+version: 0.1.0
+description: >
+  Pulls recent commits from a GitHub repo and writes a summary note
+  to the vault.
+
+# Events this plugin listens to
+subscribes:
+  - repo.commits.summarize
+
+# Events this plugin can emit
+publishes:
+  - note.written
+
+# Permissions this plugin declares
+permissions: vault:read, vault:write, llm:call
+config:
+  default_repo: AI-OS
+  default_owner: v4run

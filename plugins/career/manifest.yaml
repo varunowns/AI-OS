@@ -1,0 +1,19 @@
+name: career
+version: 0.2.0
+description: >
+  Reads a note from the vault, summarizes it and extracts action items
+  via Claude, and writes the result back as a new note.
+
+# Events this plugin listens to
+subscribes:
+  - note.summarize
+
+# Events this plugin can emit
+publishes:
+  - note.summarized
+
+# Permissions this plugin declares
+permissions: vault:read, vault:write, llm:call
+
+# No config needed yet — vault paths passed directly in the event payload
+config: {}
