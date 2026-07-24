@@ -1,0 +1,20 @@
+name: ctx2img
+version: 0.1.0
+description: >
+  Generates an image from a note's content: summarizes via LLM, then
+  creates a visual representation and links it from the source note.
+
+# Events this plugin listens to
+subscribes:
+  - note.toimage
+
+# Events this plugin can emit
+publishes:
+  - note.written
+
+# CLI commands this plugin exposes
+commands: toimage:note.toimage:Generate a visual image from a note's content
+
+# Permissions this plugin declares
+permissions: vault:read, vault:write, llm:call
+config: {}

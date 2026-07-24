@@ -108,13 +108,15 @@ def main():
         sp = subparsers.add_parser(cmd_name, help=help_text)
 
         # Most commands take a note/repo path
-        if event_name in ("note.summarize", "note.review"):
+        if event_name in ("note.summarize", "note.review", "resume.review"):
             sp.add_argument("note", help="Path to the note, relative to vault root")
         elif event_name == "repo.commits.summarize":
             sp.add_argument("repo", nargs="?", default="varunowns/AI-OS",
                             help="owner/repo (default: varunowns/AI-OS)")
             sp.add_argument("--count", type=int, default=10,
                             help="Number of commits to fetch (default: 10)")
+        elif event_name == "note.toimage":
+            sp.add_argument("note", help="Path to the note, relative to vault root")
         elif event_name == "note.search":
             sp.add_argument("query", help="Search query")
         # Many commands support --out
@@ -141,6 +143,8 @@ def main():
             payload["source_note"] = args.note
             if args.out:
                 payload["output_note"] = args.out
+        elif event_name == "note.toimage":
+            payload["source_note"] = args.note
         elif event_name == "repo.commits.summarize":
             payload["repo"] = args.repo
             payload["count"] = args.count
