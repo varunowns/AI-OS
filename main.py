@@ -126,7 +126,8 @@ def main():
                             help="Number of results (default: 5)")
 
     # Add built-in commands not driven by plugins
-    reindex_sp = subparsers.add_parser("reindex", help="Re-index all vault notes for semantic search")
+    subparsers.add_parser("reindex", help="Re-index all vault notes for semantic search")
+    subparsers.add_parser("serve", help="Start the background scheduler (Hermes)")
 
     args = parser.parse_args()
     bus = build_event_bus()
@@ -196,6 +197,25 @@ def main():
         if r["errors"]:
             for e in r["errors"]:
                 print(f"  [X] {e['path']}: {e['error']}")
+
+    elif args.command == "serve":
+        import signal
+        from automation.scheduler import start_scheduler
+
+        stop = start_scheduler(bus, interval_seconds=60)
+        print("[scheduler] Running. Press Ctrl+C to stop.")
+
+        def _handle_sig(*_):
+            print("\n[scheduler] Shutting down...")
+            stop.set()
+
+        signal.signal(signal.SIGINT, _handle_sig)
+        signal.signal(signal.SIGTERM, _handle_sig)
+
+        try:
+            stop.wait()
+        except KeyboardInterrupt:
+            stop.set()
 
 
 if __name__ == "__main__":
