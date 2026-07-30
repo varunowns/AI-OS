@@ -2,18 +2,9 @@
 Tests for the embedding service (TF-IDF vectorizer + search).
 """
 
-import sqlite3
-
 import numpy as np
 
 from services.embedding_service import EmbeddingIndex, _TfIdfVectorizer
-from storage.db import _init_schema
-
-
-def _make_emb() -> EmbeddingIndex:
-    conn = sqlite3.connect(":memory:")
-    _init_schema(conn)
-    return EmbeddingIndex(conn=conn)
 
 
 class TestTfIdfVectorizer:
@@ -47,35 +38,28 @@ class TestTfIdfVectorizer:
         vec_b = v.transform("web development python")
         min_dim = min(len(vec_a), len(vec_b))
         sim = float(np.dot(vec_a[:min_dim], vec_b[:min_dim]))
-        # These are different topics, similarity should be modest
         assert sim < 0.8
 
 
 class TestEmbeddingIndex:
 
-    def test_index_and_search(self):
-        emb = _make_emb()
-
+    def test_index_and_search(self, embedding_index: EmbeddingIndex):
+        emb = embedding_index
         emb.index_note("test/cv.md", "Computer vision with MediaPipe and OpenCV")
         emb.index_note("test/web.md", "Web development with React and TypeScript")
         emb.save_state()
 
         results = emb.search("computer vision", top_k=5)
         assert len(results) == 2
-        # The CV note should rank first for this query
         assert results[0]["path"] == "test/cv.md"
         assert results[0]["score"] > 0
 
-    def test_no_results_for_empty_index(self):
-        emb = _make_emb()
-        emb.save_state()
-
-        results = emb.search("anything", top_k=5)
+    def test_no_results_for_empty_index(self, embedding_index: EmbeddingIndex):
+        results = embedding_index.search("anything", top_k=5)
         assert isinstance(results, list)
 
-    def test_remove_note(self):
-        emb = _make_emb()
-
+    def test_remove_note(self, embedding_index: EmbeddingIndex):
+        emb = embedding_index
         emb.index_note("test/remove.md", "Will be removed")
         emb.save_state()
         assert "test/remove.md" in emb.get_indexed_paths()
