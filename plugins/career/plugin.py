@@ -16,7 +16,8 @@ from pathlib import Path
 
 from core.event_bus import EventBus
 from config import VAULT_PATH
-from services import obsidian_service, llm_service
+from services import llm_service
+from services.context_service import get_context
 
 SUMMARY_PROMPT = (
     "Summarize the following note in 3-5 bullet points, then list any "
@@ -43,12 +44,13 @@ def handle_summarize(payload: dict) -> dict:
     )
 
     # 1. Read source & generate summary
-    content = obsidian_service.read_note(source_note)
+    ctx = get_context()
+    content = ctx.read_note(source_note)
     summary = llm_service.ask(SUMMARY_PROMPT.format(content=content))
 
     # 2. Write summary note with a backlink header, tagged for search
     summary_header = f"Summary of {_note_to_wikilink(source_note)}\n\n"
-    obsidian_service.write_note(
+    ctx.write_note(
         output_note,
         summary_header + summary,
         title=f"Summary of {source_note}",
@@ -60,7 +62,7 @@ def handle_summarize(payload: dict) -> dict:
     related_link = f"- {_note_to_wikilink(output_note)}"
     if "## Related" not in content:
         source_update = content.rstrip() + f"\n\n## Related\n\n{related_link}\n"
-        obsidian_service.write_note(
+        ctx.write_note(
             source_note,
             source_update,
             plugin_source="career",

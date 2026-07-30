@@ -15,7 +15,8 @@ from pathlib import Path
 
 from config import VAULT_PATH
 from core.event_bus import EventBus
-from services import llm_service, obsidian_service
+from services import llm_service
+from services.context_service import get_context
 
 WORKSPACE = VAULT_PATH / "workspace" / "ctx2img"
 
@@ -40,7 +41,8 @@ def handle_toimage(payload: dict) -> dict:
     style = payload.get("style", "vector illustration with flat colours")
 
     # 1. Read the note
-    content = obsidian_service.read_note(source_note)
+    ctx = get_context()
+    content = ctx.read_note(source_note)
 
     # 2. Summarise for image generation
     summary = llm_service.ask(SUMMARY_FOR_IMAGE_PROMPT.format(content=content), max_tokens=200)
@@ -60,7 +62,7 @@ def handle_toimage(payload: dict) -> dict:
     relative_link = f"workspace/ctx2img/{image_filename}"
     obsidian_link = f"![[{relative_link}]]"
     updated_content = content.rstrip() + f"\n\n## Visual\n\n{obsidian_link}\n\n*Generated {timestamp}*\n"
-    obsidian_service.write_note(
+    ctx.write_note(
         source_note,
         updated_content,
         plugin_source="ctx2img",

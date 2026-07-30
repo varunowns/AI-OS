@@ -10,8 +10,8 @@ Usage:
 
 from config import VAULT_PATH
 from core.event_bus import EventBus
-from storage.db import NoteIndex, get_db
-from services import llm_service, obsidian_service
+from services import llm_service
+from services.context_service import get_context
 
 REVIEW_PROMPT = (
     "You are a career coach reviewing a resume. Below is the resume "
@@ -32,13 +32,14 @@ def handle_review(payload: dict) -> dict:
     resume_note = payload["resume_note"]
     output_note = payload.get("output_note", resume_note.replace(".md", "-review.md"))
 
-    # Read the resume
-    resume = obsidian_service.read_note(resume_note)
+    ctx = get_context()
 
-    # Query recent career summaries from SQLite
-    idx = NoteIndex(get_db())
-    career_notes = idx.get_notes_by_tag("career")
-    summary_notes = idx.get_notes_by_tag("summary")
+    # Read the resume
+    resume = ctx.read_note(resume_note)
+
+    # Query recent career summaries from the context service
+    career_notes = ctx.find_by_tag("career")
+    summary_notes = ctx.find_by_tag("summary")
 
     # Combine and deduplicate by path
     seen = set()
@@ -52,7 +53,7 @@ def handle_review(payload: dict) -> dict:
     snippets = []
     for note in recent_notes[:5]:  # limit to 5 to keep prompt size manageable
         try:
-            content = obsidian_service.read_note(note["path"])
+            content = ctx.read_note(note["path"])
             first_para = content.strip().split("\n\n")[0] if content.strip() else ""
             snippets.append(f"=== {note['path']} ===\n{first_para}")
         except FileNotFoundError:
@@ -64,7 +65,7 @@ def handle_review(payload: dict) -> dict:
     review = llm_service.ask(REVIEW_PROMPT.format(resume=resume, career_notes=career_context))
 
     # Write the review note
-    obsidian_service.write_note(
+    ctx.write_note(
         output_note,
         review,
         title=f"Resume Review — {resume_note}",

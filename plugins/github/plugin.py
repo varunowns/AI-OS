@@ -19,7 +19,8 @@ from datetime import datetime, timezone
 
 from config import VAULT_PATH
 from core.event_bus import EventBus
-from services import llm_service, obsidian_service
+from services import llm_service
+from services.context_service import get_context
 
 GITHUB_API = "https://api.github.com"
 
@@ -82,7 +83,8 @@ def handle_commits(payload: dict) -> dict:
 
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     content = f"# Recent Commits — {repo_str}\n\n_{now}_\n\n{summary}\n"
-    obsidian_service.write_note(
+    ctx = get_context()
+    ctx.write_note(
         output_note, content,
         title=f"Commits: {repo_str}",
         tags=["github", "commits"],
