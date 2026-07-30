@@ -2,16 +2,18 @@
 Tests for the embedding service (TF-IDF vectorizer + search).
 """
 
+import sqlite3
+
 import numpy as np
 
 from services.embedding_service import EmbeddingIndex, _TfIdfVectorizer
+from storage.db import _init_schema
 
 
-def _clean_embeddings(emb: EmbeddingIndex):
-    conn = emb._conn
-    conn.execute("DELETE FROM embeddings")
-    conn.execute("DELETE FROM embedding_config")
-    conn.commit()
+def _make_emb() -> EmbeddingIndex:
+    conn = sqlite3.connect(":memory:")
+    _init_schema(conn)
+    return EmbeddingIndex(conn=conn)
 
 
 class TestTfIdfVectorizer:
@@ -52,8 +54,7 @@ class TestTfIdfVectorizer:
 class TestEmbeddingIndex:
 
     def test_index_and_search(self):
-        emb = EmbeddingIndex()
-        _clean_embeddings(emb)
+        emb = _make_emb()
 
         emb.index_note("test/cv.md", "Computer vision with MediaPipe and OpenCV")
         emb.index_note("test/web.md", "Web development with React and TypeScript")
@@ -66,8 +67,7 @@ class TestEmbeddingIndex:
         assert results[0]["score"] > 0
 
     def test_no_results_for_empty_index(self):
-        emb = EmbeddingIndex()
-        _clean_embeddings(emb)
+        emb = _make_emb()
         emb.save_state()
 
         results = emb.search("anything", top_k=5)
@@ -75,8 +75,7 @@ class TestEmbeddingIndex:
         assert isinstance(results, list)
 
     def test_remove_note(self):
-        emb = EmbeddingIndex()
-        _clean_embeddings(emb)
+        emb = _make_emb()
 
         emb.index_note("test/remove.md", "Will be removed")
         emb.save_state()

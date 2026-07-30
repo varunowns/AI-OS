@@ -4,7 +4,7 @@ Tests for the Context Service.
 
 import pytest
 from services.context_service import ContextService, get_context
-from storage.db import get_db, NoteIndex
+from storage.db import get_db
 from core.plugin_registry import register_plugin, set_active_plugin
 
 

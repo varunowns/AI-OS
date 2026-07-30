@@ -16,6 +16,8 @@ Plugins should use this instead of calling services directly.
 from pathlib import Path
 from typing import Any
 
+import sqlite3
+
 from config import VAULT_PATH
 from services import obsidian_service
 from services.embedding_service import EmbeddingIndex
@@ -34,20 +36,22 @@ class ContextService:
         ctx.write_note("New/Note.md", "Content", tags=["tag1"], plugin_source="my_plugin")
     """
 
-    def __init__(self):
+    def __init__(self, conn: sqlite3.Connection | None = None):
         self._note_index: NoteIndex | None = None
         self._embedding_index: EmbeddingIndex | None = None
+        self._conn: sqlite3.Connection | None = conn
 
     @property
     def _notes(self) -> NoteIndex:
         if self._note_index is None:
-            self._note_index = NoteIndex(get_db())
+            conn = self._conn or get_db()
+            self._note_index = NoteIndex(conn)
         return self._note_index
 
     @property
     def _embeddings(self) -> EmbeddingIndex:
         if self._embedding_index is None:
-            self._embedding_index = EmbeddingIndex()
+            self._embedding_index = EmbeddingIndex(conn=self._conn)
         return self._embedding_index
 
     # -------------------------------------------------------------------------
