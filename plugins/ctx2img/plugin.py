@@ -9,14 +9,11 @@ Usage:
     python main.py toimage "Career/README.md"
 """
 
-import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-import httpx
-
-from config import VAULT_PATH, LLM_BASE_URL, LLM_API_KEY, ANTHROPIC_API_KEY, LLM_MODEL
+from config import VAULT_PATH
 from core.event_bus import EventBus
 from services import llm_service, obsidian_service
 
@@ -27,12 +24,6 @@ SUMMARY_FOR_IMAGE_PROMPT = (
     "model can turn it into a clear visual concept. Focus on the single "
     "most vivid imageable idea.\n\n---\n\n{content}"
 )
-
-IMAGE_GENERATION_PROMPT = (
-    "Create a clean, modern illustration representing this concept: {summary}. "
-    "Use a simple vector style with flat colours, professional and clear."
-)
-
 
 def _sanitise_filename(path: str) -> str:
     """Turn 'Career/README.md' into 'Career-README' for filenames."""
@@ -54,19 +45,14 @@ def handle_toimage(payload: dict) -> dict:
     # 2. Summarise for image generation
     summary = llm_service.ask(SUMMARY_FOR_IMAGE_PROMPT.format(content=content), max_tokens=200)
 
-    # 3. Generate image via Anthropic API
-    api_key = LLM_API_KEY or ANTHROPIC_API_KEY
-    if not api_key:
-        raise RuntimeError("No API key configured for image generation")
-
-    image_prompt = f"Create a {style} representing: {summary}"
-    image_data = _generate_image(api_key, image_prompt)
+    # 3. Generate image — create an SVG visual representation
+    image_data = _generate_svg_placeholder(summary, style)
 
     # 4. Save image to workspace
     WORKSPACE.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     safe_name = _sanitise_filename(source_note)
-    image_filename = f"{safe_name}_{timestamp}.png"
+    image_filename = f"{safe_name}_{timestamp}.svg"
     image_path = WORKSPACE / image_filename
     image_path.write_bytes(image_data)
 
@@ -87,42 +73,11 @@ def handle_toimage(payload: dict) -> dict:
     }
 
 
-def _generate_image(api_key: str, prompt: str) -> bytes:
-    """Call the Anthropic API to generate an image from a prompt."""
-    base_url = LLM_BASE_URL or "https://api.anthropic.com"
-
-    # Try the messages endpoint with image generation (Anthropic API)
-    # If that fails, fall back to a simpler approach
-    headers = {
-        "x-api-key": api_key,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-    }
-
-    body = {
-        "model": LLM_MODEL,
-        "max_tokens": 4096,
-        "messages": [
-            {
-                "role": "user",
-                "content": prompt,
-            }
-        ],
-    }
-
-    # Attempt image generation via the Anthropic API's image generation
-    # Since 9router may not support image generation, we'll use a placeholder
-    # approach that creates an SVG text-based visual representation instead.
-    return _generate_svg_placeholder(prompt)
-
-
-def _generate_svg_placeholder(prompt: str) -> bytes:
-    """Create a simple SVG placeholder image based on the prompt text.
-    This is a pragmatic fallback when the LLM API doesn't support
-    image generation endpoints — it produces something visual that
-    represents the concept."""
-    # Extract key words from the prompt for the SVG label
-    words = prompt.split()[:10]
+def _generate_svg_placeholder(summary: str, style: str = "") -> bytes:
+    """Create a simple SVG placeholder image based on the summary text.
+    Produces a visual representation that links back from the source note."""
+    # Extract key words from the summary for the SVG label
+    words = summary.split()[:10]
     label = " ".join(words) if len(words) <= 6 else " ".join(words[:6]) + "..."
 
     svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">

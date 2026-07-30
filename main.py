@@ -30,7 +30,6 @@ def validate_config() -> list[str]:
     """Check critical config values and return a list of issues."""
     issues = []
     vault = os.environ.get("AI_OS_VAULT_PATH", "")
-    vault = os.environ.get("AI_OS_VAULT_PATH", "")
     if not vault:
         issues.append("AI_OS_VAULT_PATH is not set. Add it to your .env file "
                        "(e.g. AI_OS_VAULT_PATH=V:/Obsidian/Obsidian Vault)")

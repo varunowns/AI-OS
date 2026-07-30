@@ -19,7 +19,7 @@ except ImportError:
     pass
 
 # Path to your Obsidian vault root, e.g. "V:/Obsidian"
-VAULT_PATH = Path(os.environ.get("AI_OS_VAULT_PATH", "./vault"))
+VAULT_PATH = Path(os.environ.get("AI_OS_VAULT_PATH", ""))
 
 # Anthropic API key — get one at https://console.anthropic.com/
 # Leave blank when using a proxy like 9router.
