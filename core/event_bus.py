@@ -50,3 +50,10 @@ class EventBus:
 
     def registered_events(self) -> list[str]:
         return list(self._subscribers.keys())
+
+    def get_subscribers(self) -> dict[str, list[str]]:
+        """Return a mapping of event_name -> list of plugin names subscribed."""
+        return {
+            event: [plugin_name for plugin_name, _ in handlers]
+            for event, handlers in self._subscribers.items()
+        }

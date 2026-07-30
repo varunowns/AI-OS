@@ -135,6 +135,7 @@ def main():
     reindex_parser = subparsers.add_parser("reindex", help="Re-index all vault notes for semantic search")
     reindex_parser.add_argument("--scan-vault", action="store_true", help="Also scan vault for new notes not created by AI-OS")
     subparsers.add_parser("serve", help="Start the background scheduler (Hermes)")
+    subparsers.add_parser("list-plugins", help="List all loaded plugins, their events, and permissions")
 
     args = parser.parse_args()
     bus = build_event_bus()
@@ -210,6 +211,36 @@ def main():
         if r["errors"]:
             for e in r["errors"]:
                 print(f"  [X] {e['path']}: {e['error']}")
+
+    elif args.command == "list-plugins":
+        from core.plugin_registry import get_registered_plugins
+        from core.plugin_loader import discover_plugins
+
+        plugins = discover_plugins()
+        registered = get_registered_plugins()
+        subscribers = bus.get_subscribers()
+
+        # Build a reverse map: plugin -> events
+        plugin_events: dict[str, list[str]] = {}
+        for event, names in subscribers.items():
+            for name in names:
+                plugin_events.setdefault(name, []).append(event)
+
+        print("Loaded plugins:")
+        print("=" * 60)
+        for meta in plugins:
+            name = meta["name"]
+            perms = registered.get(name, set())
+            events = plugin_events.get(name, [])
+            status = "[*]" if name in registered else "[ ]"
+            print(f"  {status} {name}  v{meta.get('version', '?')}")
+            print(f"      Permissions: {', '.join(sorted(perms)) if perms else 'none'}")
+            print(f"      Events:      {', '.join(sorted(events)) if events else 'none'}")
+            desc = meta.get("description", "").strip()
+            if desc:
+                # Truncate to first 80 chars
+                print(f"      Description: {desc[:80]}{'...' if len(desc) > 80 else ''}")
+            print()
 
     elif args.command == "serve":
         import signal
