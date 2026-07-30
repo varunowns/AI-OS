@@ -1,35 +1,85 @@
 # Architecture
 
-## Current (vertical slice)
+## Current
 
 ```
 ai-os/
-├── config.py
-├── main.py
+├── config.py                  # Environment-based settings
+├── main.py                    # CLI entrypoint, auto-discovers plugins
 ├── core/
-│   └── event_bus.py
+│   ├── event_bus.py           # In-memory pub/sub dispatcher
+│   ├── plugin_loader.py       # Auto-discovery + registration
+│   └── plugin_registry.py     # Permission declarations and enforcement
 ├── services/
-│   ├── obsidian_service.py
-│   └── llm_service.py
+│   ├── obsidian_service.py    # Vault read/write (enforces vault:read, vault:write)
+│   ├── llm_service.py         # Anthropic API wrapper (enforces llm:call)
+│   ├── embedding_service.py   # TF-IDF vectorizer + cosine similarity search
+│   └── context_service.py     # Unified plugin-facing API (aggregates all services)
+├── storage/
+│   └── db.py                  # SQLite metadata index (notes table)
+├── automation/
+│   └── scheduler.py           # Background job loop with YAML schedule config
 └── plugins/
-    └── career/
-        ├── manifest.yaml
-        └── plugin.py
+    ├── career/                # note.summarize
+    ├── github/                # repo.commits.summarize
+    ├── resume/                # resume.review
+    ├── search/                # note.search, note.reindex
+    ├── ctx2img/               # note.toimage
+    └── learning/              # learning.digest
 ```
 
-- **Event bus**: in-memory pub/sub, plugins subscribe/publish
-- **Obsidian service**: only sanctioned way to read/write vault notes
-- **LLM service**: only sanctioned way to call Claude — provider-agnostic seam
-- **Plugin shape**: `manifest.yaml` + `plugin.py` with `register(event_bus)`
+## Key relationships
+
+- **Event bus**: in-memory pub/sub. Plugins subscribe to events; CLI commands
+  or the scheduler publish events. Handlers run synchronously in registration order.
+- **Plugin permissions**: Each `manifest.yaml` declares permissions
+  (`vault:read`, `vault:write`, `llm:call`). Services check these at runtime
+  via the `@require()` decorator. A plugin can only call a service if it
+  declared the matching permission.
+- **ContextService**: The unified interface plugins should use. Aggregates
+  `obsidian_service` (read/write), `NoteIndex` (tag queries, metadata),
+  and `EmbeddingIndex` (semantic search). New plugins should prefer
+  `from services.context_service import get_context` over importing
+  individual services.
+- **Storage**: SQLite database lives at `VAULT_PATH/.ai-os/metadata.db`.
+  The vault's markdown files remain the source of truth — SQLite is a
+  searchable index, not a replacement.
+
+## Event catalog
+
+| Event | Publisher | Plugin handler(s) | Payload |
+|-------|-----------|-------------------|---------|
+| `note.summarize` | CLI | career | source_note, output_note |
+| `repo.commits.summarize` | CLI, scheduler | github | repo, count, output_note |
+| `resume.review` | CLI | resume | resume_note, output_note |
+| `note.search` | CLI | search | query, top_k |
+| `note.reindex` | CLI | search | (none) |
+| `note.toimage` | CLI | ctx2img | source_note, style |
+| `learning.digest` | CLI | learning | tag, output_note |
+
+## Scheduler (Hermes)
+
+The scheduler runs plugin events on a timer. Schedule config is stored in
+`VAULT_PATH/.ai-os/schedules.yaml`. Run with `python main.py serve`.
+
+Default schedule: daily GitHub commits summary for `varunowns/AI-OS`.
+
+## Design decisions
+
+- **One milestone at a time**: No speculative architecture. Each piece is
+  built only when a real plugin needs it.
+- **Python over TypeScript**: Best library fit for markdown/SQLite/LLM SDKs.
+  See `Projects/AI-OS/Decisions/ADR-001` in the vault.
+- **Vertical slice first**: One working plugin before full architecture.
+  See ADR-002.
+- **Semantic search before CLI polish**: Real content from multiple plugins
+  needed a search layer before quality-of-life CLI improvements.
+  See ADR-004.
 
 ## Not yet built
-Plugin auto-discovery, SQLite metadata layer, permissions, scheduler,
-semantic search, additional plugins. See BUILD_PLAN.md for order.
 
-## Why this lives here, not in the vault
-This is the official, versioned description of the system — it should
-change in lockstep with the code and show up in git history/diffs.
-Design *discussion* (why a decision was made, alternatives considered)
-lives in the vault as ADRs under `Projects/AI-OS/Decisions/`, linked
-back here. Update this file only when the architecture actually
-changes — not when it's planned to.
+- Plugin sandboxing/isolation
+- Multi-user
+- Web UI
+- Real image generation
+- Additional plugins (linkedin, portfolio, calendar, email, etc.)
