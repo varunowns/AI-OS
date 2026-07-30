@@ -71,7 +71,6 @@ class TestEmbeddingIndex:
         emb.save_state()
 
         results = emb.search("anything", top_k=5)
-        # May return 0 or see notes from other tests
         assert isinstance(results, list)
 
     def test_remove_note(self):
