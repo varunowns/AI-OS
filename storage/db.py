@@ -100,6 +100,16 @@ class NoteIndex:
             for row in rows
         ]
 
+    def get_all_paths(self) -> list[str]:
+        """Return all indexed note paths."""
+        cursor = self._conn.execute("SELECT path FROM notes")
+        return [r[0] for r in cursor.fetchall()]
+
+    def delete_note(self, path: str) -> None:
+        """Remove a note from the index by path."""
+        self._conn.execute("DELETE FROM notes WHERE path = ?", (path,))
+        self._conn.commit()
+
     def get_note(self, path: str) -> dict[str, Any] | None:
         """Look up a single note by path."""
         cursor = self._conn.execute(
