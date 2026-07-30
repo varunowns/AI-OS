@@ -91,27 +91,17 @@ class _TfIdfVectorizer:
             self._doc_freq[t] += 1
         self._n_docs += 1
 
-        # Build vector
-        dim = len(self._vocab)
-        vec = np.zeros(dim, dtype=np.float32)
-        tf = Counter(tokens)
-        for token, count in tf.items():
-            if token in self._vocab:
-                idx = self._vocab[token]
-                idf = math.log((self._n_docs + 1) / (self._doc_freq.get(token, 0) + 1)) + 1
-                vec[idx] = (1 + math.log(count)) * idf
-
-        norm = np.linalg.norm(vec)
-        if norm > 0:
-            vec /= norm
-        return vec
+        return self._compute_vector(tokens)
 
     def transform(self, text: str) -> np.ndarray:
         """Vectorise `text` using the **current** vocabulary (no update)."""
         tokens = self._tokenize(text)
         if not tokens or not self._vocab:
             return np.zeros(len(self._vocab) or 1, dtype=np.float32)
+        return self._compute_vector(tokens)
 
+    def _compute_vector(self, tokens: list[str]) -> np.ndarray:
+        """Build a normalised TF‑IDF vector from token counts."""
         dim = len(self._vocab)
         vec = np.zeros(dim, dtype=np.float32)
         tf = Counter(tokens)

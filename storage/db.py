@@ -52,9 +52,6 @@ def _init_schema(conn: sqlite3.Connection) -> None:
     )
 
 
-_NOTE_COLUMNS = ("path", "title", "tags", "last_modified", "plugin_source")
-
-
 def _row_to_note(row: tuple) -> dict[str, Any]:
     """Convert a SQLite row from the notes table to a dict."""
     return {
