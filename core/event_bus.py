@@ -30,6 +30,10 @@ class EventBus:
         Fire an event. Every subscribed handler runs synchronously in
         registration order. Returns the list of handler return values
         (useful for the CLI to print results).
+
+        If a handler raises an exception, it is logged to stderr and
+        the remaining handlers still run — one failing plugin does not
+        block others listening to the same event.
         """
         payload = payload or {}
         results = []
@@ -37,6 +41,9 @@ class EventBus:
             set_active_plugin(plugin_name)
             try:
                 results.append(handler(payload))
+            except Exception as exc:
+                print(f"[event_bus] Error in {plugin_name} handling '{event_name}': {exc}", file=__import__("sys").stderr)
+                results.append({"error": str(exc), "plugin": plugin_name})
             finally:
                 set_active_plugin(None)
         return results
