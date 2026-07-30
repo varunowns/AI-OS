@@ -52,6 +52,20 @@ def _init_schema(conn: sqlite3.Connection) -> None:
     )
 
 
+_NOTE_COLUMNS = ("path", "title", "tags", "last_modified", "plugin_source")
+
+
+def _row_to_note(row: tuple) -> dict[str, Any]:
+    """Convert a SQLite row from the notes table to a dict."""
+    return {
+        "path": row[0],
+        "title": row[1],
+        "tags": row[2].split(",") if row[2] else [],
+        "last_modified": row[3],
+        "plugin_source": row[4],
+    }
+
+
 class NoteIndex:
     """High-level interface for indexing and querying vault notes."""
 
@@ -88,17 +102,7 @@ class NoteIndex:
             "SELECT path, title, tags, last_modified, plugin_source FROM notes WHERE tags LIKE ?",
             (f"%{tag}%",),
         )
-        rows = cursor.fetchall()
-        return [
-            {
-                "path": row[0],
-                "title": row[1],
-                "tags": row[2].split(",") if row[2] else [],
-                "last_modified": row[3],
-                "plugin_source": row[4],
-            }
-            for row in rows
-        ]
+        return [_row_to_note(r) for r in cursor.fetchall()]
 
     def get_all_paths(self) -> list[str]:
         """Return all indexed note paths."""
@@ -117,12 +121,4 @@ class NoteIndex:
             (path,),
         )
         row = cursor.fetchone()
-        if row is None:
-            return None
-        return {
-            "path": row[0],
-            "title": row[1],
-            "tags": row[2].split(",") if row[2] else [],
-            "last_modified": row[3],
-            "plugin_source": row[4],
-        }
+        return _row_to_note(row) if row else None

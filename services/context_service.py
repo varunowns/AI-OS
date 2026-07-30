@@ -19,7 +19,7 @@ from typing import Any
 from config import VAULT_PATH
 from services import obsidian_service
 from services.embedding_service import EmbeddingIndex
-from storage.db import NoteIndex, get_db
+from storage.db import NoteIndex, get_db, _row_to_note
 
 
 class ContextService:
@@ -133,17 +133,7 @@ class ContextService:
             "SELECT path, title, tags, last_modified, plugin_source FROM notes WHERE plugin_source = ?",
             (plugin_source,),
         )
-        rows = cursor.fetchall()
-        return [
-            {
-                "path": row[0],
-                "title": row[1],
-                "tags": row[2].split(",") if row[2] else [],
-                "last_modified": row[3],
-                "plugin_source": row[4],
-            }
-            for row in rows
-        ]
+        return [_row_to_note(r) for r in cursor.fetchall()]
 
     # -------------------------------------------------------------------------
     # Semantic search
@@ -241,17 +231,7 @@ class ContextService:
                 "SELECT path, title, tags, last_modified, plugin_source FROM notes ORDER BY last_modified DESC LIMIT ?",
                 (limit,),
             )
-        rows = cursor.fetchall()
-        return [
-            {
-                "path": row[0],
-                "title": row[1],
-                "tags": row[2].split(",") if row[2] else [],
-                "last_modified": row[3],
-                "plugin_source": row[4],
-            }
-            for row in rows
-        ]
+        return [_row_to_note(r) for r in cursor.fetchall()]
 
 
 # Singleton instance for easy import
