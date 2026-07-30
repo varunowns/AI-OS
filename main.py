@@ -132,7 +132,8 @@ def main():
                             help="Number of results (default: 5)")
 
     # Add built-in commands not driven by plugins
-    subparsers.add_parser("reindex", help="Re-index all vault notes for semantic search")
+    reindex_parser = subparsers.add_parser("reindex", help="Re-index all vault notes for semantic search")
+    reindex_parser.add_argument("--scan-vault", action="store_true", help="Also scan vault for new notes not created by AI-OS")
     subparsers.add_parser("serve", help="Start the background scheduler (Hermes)")
 
     args = parser.parse_args()
@@ -199,7 +200,7 @@ def main():
                 print(summary)
 
     elif args.command == "reindex":
-        result = bus.publish("note.reindex", {})
+        result = bus.publish("note.reindex", {"scan_vault": getattr(args, "scan_vault", False)})
         if not result:
             print("No plugin handled 'note.reindex'.", file=sys.stderr)
             sys.exit(1)

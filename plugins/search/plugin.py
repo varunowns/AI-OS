@@ -40,9 +40,12 @@ def handle_reindex(payload: dict) -> dict:
     """
     Re-index all vault notes that have metadata in the SQLite notes table.
     Delegates to the ContextService to avoid service-to-plugin coupling.
+
+    payload:
+      scan_vault: bool  - when True, scans the vault for new notes first
     """
     ctx = ContextService()
-    return ctx.reindex_all()
+    return ctx.reindex_all(scan_vault=payload.get("scan_vault", False))
 
 
 def register(event_bus: EventBus, plugin_name: str = "") -> None:

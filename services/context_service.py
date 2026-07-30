@@ -156,8 +156,24 @@ class ContextService:
         """
         return self._embeddings.search(query, top_k=top_k)
 
-    def reindex_all(self) -> dict[str, Any]:
-        """Re-index all vault notes that have metadata in SQLite."""
+    def reindex_all(self, scan_vault: bool = False) -> dict[str, Any]:
+        """Re-index all vault notes.
+
+        When scan_vault is True, first discovers all .md files in the
+        vault and indexes them in SQLite metadata + embeddings, including
+        notes not created by AI-OS. When False, only re-indexes notes
+        already present in the SQLite notes table.
+        """
+        if scan_vault:
+            vault_notes = obsidian_service.scan_vault()
+            for note in vault_notes:
+                self._notes.index_note(
+                    path=note["path"],
+                    title=note["title"],
+                    tags=note["tags"],
+                    plugin_source="",
+                )
+
         paths = self._notes.get_all_paths()
         indexed = 0
         errors = []
