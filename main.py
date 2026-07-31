@@ -23,7 +23,7 @@ except ImportError:
     pass
 
 from core.event_bus import EventBus
-from core.plugin_loader import discover_plugins, load_and_register
+from core.plugin_loader import discover_plugins, load_and_register, validate_manifest
 from core.plugin_registry import get_registered_plugins
 
 
@@ -86,6 +86,10 @@ def main():
 
     for meta in plugins:
         plugin_name = meta["name"]
+        if "_parse_error" in meta or validate_manifest(meta):
+            # Skip plugins whose manifest violates the contract — they are
+            # excluded from the CLI command map and never registered.
+            continue
         commands_raw = meta.get("commands", "")
         if commands_raw:
             # Parse commands from manifest: "summarize:note.summarize"
@@ -238,6 +242,13 @@ def main():
             if desc:
                 # Truncate to first 80 chars
                 print(f"      Description: {desc[:80]}{'...' if len(desc) > 80 else ''}")
+            if "_parse_error" in meta:
+                print(f"      [X] Manifest failed to parse: {meta['_parse_error']}")
+            elif meta.get("_validation_errors") or validate_manifest(meta):
+                errors = meta.get("_validation_errors") or validate_manifest(meta)
+                print(f"      [X] Invalid manifest:")
+                for issue in errors:
+                    print(f"          - {issue}")
             print()
 
     elif args.command == "serve":
