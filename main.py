@@ -24,6 +24,7 @@ except ImportError:
 
 from core.event_bus import EventBus
 from core.plugin_loader import discover_plugins, load_and_register
+from core.plugin_registry import get_registered_plugins
 
 
 def validate_config() -> list[str]:
@@ -213,9 +214,6 @@ def main():
                 print(f"  [X] {e['path']}: {e['error']}")
 
     elif args.command == "list-plugins":
-        from core.plugin_registry import get_registered_plugins
-        from core.plugin_loader import discover_plugins
-
         plugins = discover_plugins()
         registered = get_registered_plugins()
         subscribers = bus.get_subscribers()
