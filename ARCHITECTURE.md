@@ -64,10 +64,34 @@ The scheduler runs plugin events on a timer. Schedule config is stored in
 
 Default schedule: daily GitHub commits summary for `varunowns/AI-OS`.
 
+## Plugin contract
+
+A plugin is a folder under `plugins/` with `manifest.yaml` + `plugin.py`
+that exports `register(event_bus)`. The manifest declares the plugin's
+contract, enforced at load time by `validate_manifest()` in
+`core/plugin_loader.py`:
+
+| Field | Required | Shape |
+|-------|----------|-------|
+| `name` | yes | kebab-case string, matches the plugin dir |
+| `version` | yes | semver `x.y.z` |
+| `description` | yes | non-empty string |
+| `subscribes` / `publishes` | no | list of non-empty event names |
+| `permissions` | no | string or list of known permissions (`vault:read`, `vault:write`, `llm:call`) |
+| `commands` | no | `cmd:event[:help]` entries (semicolon- or list-separated) |
+| `config` | no | free-form plugin config |
+
+Invalid or unparseable manifests are skipped loudly at load — a plugin is
+never half-loaded. `load_and_register(bus, plugins_dir=...)` and
+`discover_plugins(plugins_dir=...)` accept a custom directory for testing.
+
 ## Design decisions
 
 - **One milestone at a time**: No speculative architecture. Each piece is
   built only when a real plugin needs it.
+- **Plugin contract over convention**: manifests are validated at load time
+  (see `Projects/AI-OS/Decisions/ADR-005` in the vault). Invalid contracts
+  are skipped loudly, never half-loaded.
 - **Python over TypeScript**: Best library fit for markdown/SQLite/LLM SDKs.
   See `Projects/AI-OS/Decisions/ADR-001` in the vault.
 - **Vertical slice first**: One working plugin before full architecture.
