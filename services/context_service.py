@@ -36,10 +36,12 @@ class ContextService:
         ctx.write_note("New/Note.md", "Content", tags=["tag1"], plugin_source="my_plugin")
     """
 
-    def __init__(self, conn: sqlite3.Connection | None = None):
+    def __init__(self, conn: sqlite3.Connection | None = None,
+                 vault_path: Path | None = None):
         self._note_index: NoteIndex | None = None
         self._embedding_index: EmbeddingIndex | None = None
         self._conn: sqlite3.Connection | None = conn
+        self._vault_path: Path | None = vault_path
 
     @property
     def _notes(self) -> NoteIndex:
@@ -91,11 +93,11 @@ class ContextService:
 
     def note_exists(self, relative_path: str) -> bool:
         """Check if a note exists in the vault."""
-        return (VAULT_PATH / relative_path).exists()
+        return ((self._vault_path or VAULT_PATH) / relative_path).exists()
 
     def delete_note(self, relative_path: str) -> bool:
         """Delete a note from vault and indexes."""
-        note_path = VAULT_PATH / relative_path
+        note_path = (self._vault_path or VAULT_PATH) / relative_path
         if not note_path.exists():
             return False
 
@@ -122,7 +124,7 @@ class ContextService:
 
     def get_all_tags(self) -> list[str]:
         """Get all unique tags across all indexed notes."""
-        conn = get_db()
+        conn = self._conn or get_db()
         rows = conn.execute("SELECT tags FROM notes WHERE tags != ''").fetchall()
         tags = set()
         for row in rows:
@@ -132,7 +134,7 @@ class ContextService:
 
     def get_notes_by_plugin(self, plugin_source: str) -> list[dict[str, Any]]:
         """Get all notes written by a specific plugin."""
-        conn = get_db()
+        conn = self._conn or get_db()
         cursor = conn.execute(
             "SELECT path, title, tags, last_modified, plugin_source FROM notes WHERE plugin_source = ?",
             (plugin_source,),
@@ -224,7 +226,7 @@ class ContextService:
 
     def get_recent_notes(self, limit: int = 10, plugin_source: str | None = None) -> list[dict[str, Any]]:
         """Get recently modified notes, optionally filtered by plugin."""
-        conn = get_db()
+        conn = self._conn or get_db()
         if plugin_source:
             cursor = conn.execute(
                 "SELECT path, title, tags, last_modified, plugin_source FROM notes WHERE plugin_source = ? ORDER BY last_modified DESC LIMIT ?",

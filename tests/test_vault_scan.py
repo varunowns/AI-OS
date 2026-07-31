@@ -65,14 +65,26 @@ class TestTagExtraction:
 
 class TestVaultScanning:
 
-    def test_scan_returns_list(self):
-        """At minimum, the vault should exist and return a list."""
+    def test_scan_returns_list(self, test_vault):
+        """scan_vault should return a list of note dicts."""
         notes = scan_vault()
         assert isinstance(notes, list)
 
-    def test_scan_finds_markdown(self):
+    def test_scan_finds_markdown(self, test_vault):
+        """scan_vault should discover all seeded markdown notes."""
         notes = scan_vault()
-        if notes:
-            assert all("path" in n for n in notes)
-            assert all(n["path"].endswith(".md") for n in notes)
-            assert all("title" in n for n in notes)
+        paths = {n["path"] for n in notes}
+        assert paths == {
+            "Career/README.md",
+            "Career/notes-on-ml.md",
+            "Learning/study-notes.md",
+        }
+        assert all("title" in n for n in notes)
+        assert all(n["title"] for n in notes)
+
+    def test_scan_extracts_frontmatter(self, test_vault):
+        """Frontmatter title and tags should be picked up during scanning."""
+        notes = {n["path"]: n for n in scan_vault()}
+        career = notes["Career/README.md"]
+        assert career["title"] == "Career README"
+        assert "career" in career["tags"]
