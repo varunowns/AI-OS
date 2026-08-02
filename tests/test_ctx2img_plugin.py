@@ -25,6 +25,35 @@ def test_sanitise_filename():
     assert _sanitise_filename("Dev/some-notes.md") == "Dev-some-notes"
 
 
+class TestGenerateSvgPlaceholder:
+    """The pure SVG placeholder generator."""
+
+    def test_returns_valid_svg_bytes(self):
+        from plugins.ctx2img.plugin import _generate_svg_placeholder
+        data = _generate_svg_placeholder("A vivid summary", "line art")
+        assert isinstance(data, bytes)
+        text = data.decode("utf-8")
+        assert text.startswith("<svg")
+        assert text.endswith("</svg>")
+        assert "A vivid summary" in text
+
+    def test_long_summary_truncated(self):
+        from plugins.ctx2img.plugin import _generate_svg_placeholder
+        data = _generate_svg_placeholder("word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11", "")
+        text = data.decode("utf-8")
+        # Only the first 6 words + "..." should be in the label
+        assert "word1" in text
+        assert "..." in text
+        assert "word11" not in text
+
+    def test_empty_summary_still_valid(self):
+        from plugins.ctx2img.plugin import _generate_svg_placeholder
+        data = _generate_svg_placeholder("", "style")
+        text = data.decode("utf-8")
+        assert text.startswith("<svg")
+        assert text.endswith("</svg>")
+
+
 def test_all_plugins_loaded():
     bus = EventBus()
     report = load_and_register(bus)
