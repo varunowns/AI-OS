@@ -36,6 +36,10 @@ ai-os/
   (`vault:read`, `vault:write`, `llm:call`). Services check these at runtime
   via the `@require()` decorator. A plugin can only call a service if it
   declared the matching permission.
+- **Vault containment**: every vault-relative path is resolved through
+  `_resolve_vault_path` and rejected with `ValueError` if it escapes the
+  vault root. Plugin event payloads are untrusted, so `../../` traversal
+  can never read, write, or delete files outside the vault.
 - **ContextService**: The unified interface plugins should use. Aggregates
   `obsidian_service` (read/write), `NoteIndex` (tag queries, metadata),
   and `EmbeddingIndex` (semantic search). New plugins should prefer

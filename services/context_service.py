@@ -93,11 +93,17 @@ class ContextService:
 
     def note_exists(self, relative_path: str) -> bool:
         """Check if a note exists in the vault."""
-        return ((self._vault_path or VAULT_PATH) / relative_path).exists()
+        root = self._vault_path or VAULT_PATH
+        try:
+            target = obsidian_service._resolve_vault_path(relative_path, root)
+        except ValueError:
+            return False
+        return target.exists()
 
     def delete_note(self, relative_path: str) -> bool:
         """Delete a note from vault and indexes."""
-        note_path = (self._vault_path or VAULT_PATH) / relative_path
+        root = self._vault_path or VAULT_PATH
+        note_path = obsidian_service._resolve_vault_path(relative_path, root)
         if not note_path.exists():
             return False
 

@@ -25,13 +25,33 @@ def _get_index() -> NoteIndex:
     return _index
 
 
+def _resolve_vault_path(relative_path: str, vault_root: Path | None = None) -> Path:
+    """Resolve a vault-relative path, rejecting paths that escape the vault.
+
+    A payload like '../../evil.md' must never resolve to a file outside
+    the vault root — plugin event payloads are treated as untrusted.
+    Raises ValueError when the resolved target is not inside vault_root.
+
+    vault_root defaults to VAULT_PATH read at call time (not bound at
+    import), so tests that monkeypatch obsidian_service.VAULT_PATH get
+    the isolated root.
+    """
+    root = (vault_root or VAULT_PATH).resolve()
+    target = (root / relative_path).resolve()
+    if not target.is_relative_to(root):
+        raise ValueError(
+            f"Path '{relative_path}' resolves outside the vault root ({root})"
+        )
+    return target
+
+
 @require("vault:read")
 def read_note(relative_path: str) -> str:
     """
     Read a note's raw markdown content.
     relative_path is relative to the vault root, e.g. "Career/README.md"
     """
-    note_path = VAULT_PATH / relative_path
+    note_path = _resolve_vault_path(relative_path)
     if not note_path.exists():
         raise FileNotFoundError(f"No note found at {note_path}")
     return note_path.read_text(encoding="utf-8")
@@ -50,7 +70,7 @@ def write_note(
     Also indexes the note in the SQLite metadata layer.
     Returns the full path written to.
     """
-    note_path = VAULT_PATH / relative_path
+    note_path = _resolve_vault_path(relative_path)
     note_path.parent.mkdir(parents=True, exist_ok=True)
     note_path.write_text(content, encoding="utf-8")
 
