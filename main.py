@@ -23,7 +23,7 @@ except ImportError:
     pass
 
 from core.event_bus import EventBus
-from core.plugin_loader import discover_plugins, load_and_register, validate_manifest
+from core.plugin_loader import PluginLoadReport, discover_plugins, load_and_register, validate_manifest
 from core.plugin_registry import get_registered_plugins
 
 
@@ -54,13 +54,22 @@ def validate_config() -> list[str]:
     return issues
 
 
+_load_report: "PluginLoadReport | None" = None
+
+
 def build_event_bus() -> EventBus:
+    """Build the event bus and register all valid plugins.
+
+    The load result is stashed globally so list-plugins can annotate
+    skipped/failed plugins. A summary is always printed; details go to
+    stderr (from the loader) so the CLI output stays clean.
+    """
+    global _load_report
     bus = EventBus()
-    registered = load_and_register(bus)
-    if not registered:
+    _load_report = load_and_register(bus)
+    print(f"Plugins: {_load_report.summary()}.")
+    if not _load_report.registered:
         print("Warning: no plugins were loaded.", file=sys.stderr)
-    else:
-        print(f"Loaded plugins: {', '.join(registered)}")
     return bus
 
 
@@ -244,11 +253,17 @@ def main():
                 print(f"      Description: {desc[:80]}{'...' if len(desc) > 80 else ''}")
             if "_parse_error" in meta:
                 print(f"      [X] Manifest failed to parse: {meta['_parse_error']}")
+            elif _load_report is not None and name in _load_report.skipped:
+                print(f"      [X] Skipped — invalid manifest:")
+                for issue in _load_report.skipped[name]:
+                    print(f"          - {issue}")
             elif meta.get("_validation_errors") or validate_manifest(meta):
                 errors = meta.get("_validation_errors") or validate_manifest(meta)
                 print(f"      [X] Invalid manifest:")
                 for issue in errors:
                     print(f"          - {issue}")
+            elif _load_report is not None and name in _load_report.failed:
+                print(f"      [X] Failed to load: {_load_report.failed[name]}")
             print()
 
     elif args.command == "serve":

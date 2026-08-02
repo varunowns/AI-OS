@@ -82,8 +82,11 @@ contract, enforced at load time by `validate_manifest()` in
 | `config` | no | free-form plugin config |
 
 Invalid or unparseable manifests are skipped loudly at load — a plugin is
-never half-loaded. `load_and_register(bus, plugins_dir=...)` and
-`discover_plugins(plugins_dir=...)` accept a custom directory for testing.
+never half-loaded, and one bad plugin never blocks the others.
+`load_and_register(bus, plugins_dir=...)` returns a `PluginLoadReport`
+(registered / skipped / failed) so callers can surface *why* a plugin is
+missing; `discover_plugins(plugins_dir=...)` returns unvalidated metadata.
+Both accept a custom directory for testing.
 
 ## Design decisions
 

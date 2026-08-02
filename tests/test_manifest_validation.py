@@ -8,7 +8,12 @@ from pathlib import Path
 import pytest
 
 from core.event_bus import EventBus
-from core.plugin_loader import discover_plugins, load_and_register, validate_manifest
+from core.plugin_loader import (
+    PluginLoadReport,
+    discover_plugins,
+    load_and_register,
+    validate_manifest,
+)
 
 
 def _valid_manifest() -> dict:
@@ -141,17 +146,76 @@ class TestLoaderSkipsInvalid:
 
     def test_invalid_plugin_is_skipped(self, broken_plugins_dir: Path, capsys):
         bus = EventBus()
-        registered = load_and_register(bus, plugins_dir=broken_plugins_dir)
-        assert registered == ["good"]
+        report = load_and_register(bus, plugins_dir=broken_plugins_dir)
+        assert report.registered == ["good"]
+        assert report.skipped["bad"]  # non-empty reasons
+        assert "bad" not in report.failed
         # The bad plugin's register() must never run
         err = capsys.readouterr().err
         assert "Skipping 'bad'" in err
         assert "invalid manifest" in err
 
+    def test_report_ok_is_false_when_skipped(self, broken_plugins_dir: Path):
+        report = load_and_register(EventBus(), plugins_dir=broken_plugins_dir)
+        assert not report.ok
+
+    def test_report_summary(self, broken_plugins_dir: Path):
+        report = load_and_register(EventBus(), plugins_dir=broken_plugins_dir)
+        s = report.summary()
+        assert "1 loaded" in s
+        assert "1 skipped" in s
+
     def test_discover_still_reports_both(self, broken_plugins_dir: Path):
         metas = discover_plugins(broken_plugins_dir)
         names = {m["name"] for m in metas}
         assert names == {"good", "bad"}
+
+
+class TestLoaderReportsRegisterFailure:
+
+    @pytest.fixture
+    def dir_with_register_failure(self, tmp_path: Path) -> Path:
+        """A plugins dir whose plugin raises inside register()."""
+        bad = tmp_path / "boom"
+        bad.mkdir()
+        (bad / "manifest.yaml").write_text(
+            "name: boom\nversion: 1.0.0\ndescription: Fails on register\npermissions: vault:read\n",
+            encoding="utf-8",
+        )
+        (bad / "plugin.py").write_text(
+            "def register(event_bus, plugin_name=''):\n"
+            "    raise RuntimeError('register exploded')\n",
+            encoding="utf-8",
+        )
+        return tmp_path
+
+    def test_register_failure_recorded(self, dir_with_register_failure: Path, capsys):
+        bus = EventBus()
+        report = load_and_register(bus, plugins_dir=dir_with_register_failure)
+        assert report.registered == []
+        assert report.failed["boom"] == "register exploded"
+        assert not report.ok
+        err = capsys.readouterr().err
+        assert "Failed to load plugin 'boom'" in err
+
+    def test_one_failing_plugin_does_not_block_others(
+        self, dir_with_register_failure: Path, tmp_path: Path
+    ):
+        # Add a good sibling next to the failing plugin
+        good = tmp_path / "good"
+        good.mkdir()
+        (good / "manifest.yaml").write_text(
+            "name: good\nversion: 1.0.0\ndescription: A good plugin\npermissions: vault:read\n",
+            encoding="utf-8",
+        )
+        (good / "plugin.py").write_text(
+            "def register(event_bus, plugin_name=''):\n"
+            "    event_bus.subscribe('good.event', lambda p: {}, plugin_name=plugin_name)\n",
+            encoding="utf-8",
+        )
+        report = load_and_register(EventBus(), plugins_dir=dir_with_register_failure)
+        assert report.failed["boom"]
+        assert "good" in report.registered
 
 
 class TestAllRealPluginsValid:

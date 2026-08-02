@@ -15,8 +15,10 @@ the plugin contract a real contract rather than a suggestion.
 """
 
 import importlib
+import importlib.util
 import re
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -35,6 +37,32 @@ _KNOWN_PERMISSIONS = {"vault:read", "vault:write", "llm:call"}
 
 # Commands declared in a manifest look like "name:event:help".
 _COMMAND_ENTRY_SEPARATOR = ";"
+
+
+@dataclass
+class PluginLoadReport:
+    """
+    Structured result of load_and_register, so callers can surface why
+    a plugin is missing rather than guessing from stderr.
+    """
+
+    registered: list[str] = field(default_factory=list)
+    skipped: dict[str, list[str]] = field(default_factory=dict)  # name -> manifest issues
+    failed: dict[str, str] = field(default_factory=dict)  # name -> error string
+
+    @property
+    def ok(self) -> bool:
+        """True when every discovered plugin loaded successfully."""
+        return not self.skipped and not self.failed
+
+    def summary(self) -> str:
+        """One-line summary for CLI output, e.g. '5 loaded, 1 skipped, 0 failed'."""
+        parts = [f"{len(self.registered)} loaded"]
+        if self.skipped:
+            parts.append(f"{len(self.skipped)} skipped")
+        if self.failed:
+            parts.append(f"{len(self.failed)} failed")
+        return ", ".join(parts)
 
 
 def validate_manifest(meta: dict) -> list[str]:
@@ -146,18 +174,21 @@ def discover_plugins(plugins_dir: Path | None = None) -> list[dict]:
     return discovered
 
 
-def load_and_register(event_bus: "EventBus", plugins_dir: Path | None = None) -> list[str]:
+def load_and_register(event_bus: "EventBus", plugins_dir: Path | None = None) -> PluginLoadReport:
     """
     Discover all plugins, import their plugin.py module, and call
-    register(event_bus). Returns the list of registered plugin names.
+    register(event_bus). Returns a PluginLoadReport describing what
+    happened for every discovered plugin.
 
-    Plugins whose manifest fails validation (or failed to parse) are
-    skipped with a warning to stderr — an invalid contract is never
-    half-loaded. plugins_dir can be overridden for testing.
+    Failure isolation: a plugin whose manifest fails validation (or
+    failed to parse) is skipped, and a plugin whose import or register()
+    raises is recorded as failed — either way it is never half-loaded and
+    one bad plugin does not block the others. plugins_dir can be
+    overridden for testing.
     """
     base_dir = plugins_dir or PLUGINS_DIR
     plugins = discover_plugins(base_dir)
-    registered = []
+    report = PluginLoadReport()
 
     for meta in plugins:
         plugin_name = meta["name"]
@@ -167,6 +198,7 @@ def load_and_register(event_bus: "EventBus", plugins_dir: Path | None = None) ->
                 f"[plugin_loader] Skipping '{plugin_name}': manifest failed to parse: {meta['_parse_error']}",
                 file=sys.stderr,
             )
+            report.skipped[plugin_name] = [f"manifest failed to parse: {meta['_parse_error']}"]
             continue
 
         validation_issues = validate_manifest(meta)
@@ -178,6 +210,7 @@ def load_and_register(event_bus: "EventBus", plugins_dir: Path | None = None) ->
             for issue in validation_issues:
                 print(f"  - {issue}", file=sys.stderr)
             meta["_validation_errors"] = validation_issues
+            report.skipped[plugin_name] = validation_issues
             continue
 
         try:
@@ -188,22 +221,23 @@ def load_and_register(event_bus: "EventBus", plugins_dir: Path | None = None) ->
                 f"plugins.{plugin_name}.plugin", plugin_module_path
             )
             if spec is None or spec.loader is None:
-                print(f"[plugin_loader] Error loading plugin '{plugin_name}': cannot load module", file=sys.stderr)
-                continue
+                raise ImportError("cannot build a module spec from the plugin.py path")
+
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
-            # Call its register function
+
+            if not hasattr(module, "register"):
+                raise AttributeError("plugin.py has no register(event_bus) function")
+
             # Register permissions from manifest before calling register()
             permissions = meta.get("permissions", "")
             perm_list = [p.strip() for p in permissions.split(",") if p.strip()]
             register_plugin(plugin_name, perm_list)
 
-            if hasattr(module, "register"):
-                module.register(event_bus, plugin_name=plugin_name)
-                registered.append(plugin_name)
-            else:
-                print(f"[plugin_loader] Warning: {plugin_name}/plugin.py has no register() function", file=sys.stderr)
+            module.register(event_bus, plugin_name=plugin_name)
+            report.registered.append(plugin_name)
         except Exception as exc:
-            print(f"[plugin_loader] Error loading plugin '{plugin_name}': {exc}", file=sys.stderr)
+            print(f"[plugin_loader] Failed to load plugin '{plugin_name}': {exc}", file=sys.stderr)
+            report.failed[plugin_name] = str(exc)
 
-    return registered
+    return report

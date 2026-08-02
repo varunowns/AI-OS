@@ -24,14 +24,14 @@ def test_resume_manifest_has_permissions():
 
 def test_resume_registers_event():
     bus = EventBus()
-    registered = load_and_register(bus)
-    assert "resume" in registered
+    report = load_and_register(bus)
+    assert "resume" in report.registered
     assert "resume.review" in bus.registered_events()
 
 
 def test_all_plugins_loaded():
     bus = EventBus()
-    registered = load_and_register(bus)
-    assert "career" in registered
-    assert "github" in registered
-    assert "resume" in registered
+    report = load_and_register(bus)
+    assert "career" in report.registered
+    assert "github" in report.registered
+    assert "resume" in report.registered

@@ -21,6 +21,14 @@ def test_discover_returns_metadata():
 
 def test_load_and_register():
     bus = EventBus()
-    registered = load_and_register(bus)
-    assert "career" in registered
+    report = load_and_register(bus)
+    assert "career" in report.registered
     assert "note.summarize" in bus.registered_events()
+
+
+def test_load_report_all_plugins_ok():
+    bus = EventBus()
+    report = load_and_register(bus)
+    assert report.ok
+    assert report.skipped == {}
+    assert report.failed == {}

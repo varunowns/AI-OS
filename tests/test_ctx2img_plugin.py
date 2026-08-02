@@ -14,8 +14,8 @@ def test_discover_finds_ctx2img():
 
 def test_ctx2img_registers_event():
     bus = EventBus()
-    registered = load_and_register(bus)
-    assert "ctx2img" in registered
+    report = load_and_register(bus)
+    assert "ctx2img" in report.registered
     assert "note.toimage" in bus.registered_events()
 
 
@@ -27,6 +27,6 @@ def test_sanitise_filename():
 
 def test_all_plugins_loaded():
     bus = EventBus()
-    registered = load_and_register(bus)
-    assert len(registered) >= 5
-    assert "ctx2img" in registered
+    report = load_and_register(bus)
+    assert len(report.registered) >= 5
+    assert "ctx2img" in report.registered

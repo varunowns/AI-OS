@@ -23,17 +23,17 @@ def test_learning_manifest():
 
 def test_learning_registers_event():
     bus = EventBus()
-    registered = load_and_register(bus)
-    assert "learning" in registered
+    report = load_and_register(bus)
+    assert "learning" in report.registered
     assert "learning.digest" in bus.registered_events()
 
 
 def test_all_six_plugins_loaded():
     bus = EventBus()
-    registered = load_and_register(bus)
-    assert "career" in registered
-    assert "github" in registered
-    assert "resume" in registered
-    assert "search" in registered
-    assert "ctx2img" in registered
-    assert "learning" in registered
+    report = load_and_register(bus)
+    assert "career" in report.registered
+    assert "github" in report.registered
+    assert "resume" in report.registered
+    assert "search" in report.registered
+    assert "ctx2img" in report.registered
+    assert "learning" in report.registered
