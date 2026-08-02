@@ -246,7 +246,11 @@ def load_and_register(event_bus: "EventBus", plugins_dir: Path | None = None) ->
             perm_list = parse_permissions(meta.get("permissions", ""))
             register_plugin(plugin_name, perm_list)
 
-            module.register(event_bus, plugin_name=plugin_name)
+            module.register(
+                event_bus,
+                plugin_name=plugin_name,
+                config=meta.get("config") or {},
+            )
             report.registered.append(plugin_name)
         except Exception as exc:
             print(f"[plugin_loader] Failed to load plugin '{plugin_name}': {exc}", file=sys.stderr)

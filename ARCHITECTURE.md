@@ -84,9 +84,11 @@ Default schedule: daily GitHub commits summary for `varunowns/AI-OS`.
 ## Plugin contract
 
 A plugin is a folder under `plugins/` with `manifest.yaml` + `plugin.py`
-that exports `register(event_bus)`. The manifest declares the plugin's
-contract, enforced at load time by `validate_manifest()` in
-`core/plugin_loader.py`:
+that exports `register(event_bus, plugin_name="", config=None)`. The
+loader passes the plugin's manifest `config` dict to `register()` so a
+plugin's defaults live in its manifest, not hardcoded in code. The
+manifest declares the plugin's contract, enforced at load time by
+`validate_manifest()` in `core/plugin_loader.py`:
 
 | Field | Required | Shape |
 |-------|----------|-------|

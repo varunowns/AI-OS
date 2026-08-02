@@ -27,6 +27,10 @@ DIGEST_PROMPT = (
     "---\n\n{notes_content}"
 )
 
+# Defaults drawn from the manifest's config; populated by register().
+_DEFAULT_TAG = "learning"
+_DEFAULT_DIGEST_FOLDER = "Learning/Digests"
+
 
 def handle_digest(payload: dict) -> dict:
     """
@@ -34,8 +38,11 @@ def handle_digest(payload: dict) -> dict:
       tag: str          - tag to search for (default: learning)
       output_note: str  - where to write the digest (optional)
     """
-    tag = payload.get("tag", "learning")
-    output_note = payload.get("output_note", f"Learning/Digests/weekly-{datetime.now(timezone.utc).strftime('%Y-%m-%d')}.md")
+    tag = payload.get("tag", _DEFAULT_TAG)
+    output_note = payload.get(
+        "output_note",
+        f"{_DEFAULT_DIGEST_FOLDER}/weekly-{datetime.now(timezone.utc).strftime('%Y-%m-%d')}.md",
+    )
 
     ctx = get_context()
 
@@ -92,6 +99,18 @@ def handle_digest(payload: dict) -> dict:
     }
 
 
-def register(event_bus: EventBus, plugin_name: str = "") -> None:
-    """Called once at startup to wire this plugin into the event bus."""
+def register(event_bus: EventBus, plugin_name: str = "", config: dict | None = None) -> None:
+    """Called once at startup to wire this plugin into the event bus.
+
+    config (from the manifest) may provide:
+      learning_tag   — tag to search for
+      digest_folder  — where to write digests
+    """
+    global _DEFAULT_TAG, _DEFAULT_DIGEST_FOLDER
+    cfg = config or {}
+    if "learning_tag" in cfg:
+        _DEFAULT_TAG = str(cfg["learning_tag"])
+    if "digest_folder" in cfg:
+        _DEFAULT_DIGEST_FOLDER = str(cfg["digest_folder"])
+
     event_bus.subscribe("learning.digest", handle_digest, plugin_name=plugin_name)

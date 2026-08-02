@@ -152,7 +152,7 @@ class TestLoaderSkipsInvalid:
             encoding="utf-8",
         )
         (good / "plugin.py").write_text(
-            "def register(event_bus, plugin_name=''):\n"
+            "def register(event_bus, plugin_name='', config=None):\n"
             "    event_bus.subscribe('good.event', lambda p: {'ok': True}, plugin_name=plugin_name)\n",
             encoding="utf-8",
         )
@@ -164,7 +164,7 @@ class TestLoaderSkipsInvalid:
             encoding="utf-8",
         )
         (bad / "plugin.py").write_text(
-            "def register(event_bus, plugin_name=''):\n"
+            "def register(event_bus, plugin_name='', config=None):\n"
             "    raise AssertionError('should never be called')\n",
             encoding="utf-8",
         )
@@ -209,7 +209,7 @@ class TestLoaderReportsRegisterFailure:
             encoding="utf-8",
         )
         (bad / "plugin.py").write_text(
-            "def register(event_bus, plugin_name=''):\n"
+            "def register(event_bus, plugin_name='', config=None):\n"
             "    raise RuntimeError('register exploded')\n",
             encoding="utf-8",
         )
@@ -235,13 +235,57 @@ class TestLoaderReportsRegisterFailure:
             encoding="utf-8",
         )
         (good / "plugin.py").write_text(
-            "def register(event_bus, plugin_name=''):\n"
+            "def register(event_bus, plugin_name='', config=None):\n"
             "    event_bus.subscribe('good.event', lambda p: {}, plugin_name=plugin_name)\n",
             encoding="utf-8",
         )
         report = load_and_register(EventBus(), plugins_dir=dir_with_register_failure)
         assert report.failed["boom"]
         assert "good" in report.registered
+
+
+class TestLoaderPassesConfig:
+    """The loader must pass each plugin's manifest config to register()."""
+
+    @staticmethod
+    def _write_plugin(plugins_dir, name, config_yaml=""):
+        """Write a plugin whose register() records config to a JSON file."""
+        import json
+        plugin_dir = plugins_dir / name
+        plugin_dir.mkdir(parents=True, exist_ok=True)
+        (plugin_dir / "manifest.yaml").write_text(
+            f"name: {name}\nversion: 1.0.0\ndescription: Has config\n{config_yaml}\n",
+            encoding="utf-8",
+        )
+        # register() dumps config to a file in the plugin dir, so the test
+        # can assert what the loader passed without cross-module plumbing.
+        (plugin_dir / "plugin.py").write_text(
+            "import json, os\n"
+            "def register(event_bus, plugin_name='', config=None):\n"
+            f"    with open(os.path.join(os.path.dirname(__file__), 'captured.json'), 'w') as f:\n"
+            f"        json.dump(config, f)\n",
+            encoding="utf-8",
+        )
+
+    def test_config_passed_to_register(self, tmp_path: Path):
+        """The manifest config dict must reach register()."""
+        import json
+        self._write_plugin(
+            tmp_path, "good",
+            "config:\n  greeting: hello\n  count: 3\n",
+        )
+        report = load_and_register(EventBus(), plugins_dir=tmp_path)
+        assert report.registered == ["good"]
+        captured = json.loads((tmp_path / "good" / "captured.json").read_text(encoding="utf-8"))
+        assert captured == {"greeting": "hello", "count": 3}
+
+    def test_absent_config_is_empty_dict(self, tmp_path: Path):
+        """A plugin with no config gets an empty dict, not None."""
+        import json
+        self._write_plugin(tmp_path, "good", "")
+        load_and_register(EventBus(), plugins_dir=tmp_path)
+        captured = json.loads((tmp_path / "good" / "captured.json").read_text(encoding="utf-8"))
+        assert captured == {}
 
 
 class TestLoaderListPermissions:
@@ -258,7 +302,7 @@ class TestLoaderListPermissions:
             encoding="utf-8",
         )
         (good / "plugin.py").write_text(
-            "def register(event_bus, plugin_name=''):\n"
+            "def register(event_bus, plugin_name='', config=None):\n"
             "    event_bus.subscribe('good.event', lambda p: {'ok': True}, plugin_name=plugin_name)\n",
             encoding="utf-8",
         )

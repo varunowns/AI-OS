@@ -48,7 +48,7 @@ def handle_reindex(payload: dict) -> dict:
     return ctx.reindex_all(scan_vault=payload.get("scan_vault", False))
 
 
-def register(event_bus: EventBus, plugin_name: str = "") -> None:
+def register(event_bus: EventBus, plugin_name: str = "", config: dict | None = None) -> None:
     """Called once at startup to wire this plugin into the event bus."""
     event_bus.subscribe("note.search", handle_search, plugin_name=plugin_name)
     event_bus.subscribe("note.reindex", handle_reindex, plugin_name=plugin_name)

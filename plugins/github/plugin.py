@@ -24,6 +24,10 @@ from services.context_service import get_context
 
 GITHUB_API = "https://api.github.com"
 
+# Defaults drawn from the manifest's config; populated by register().
+_DEFAULT_REPO = "v4run/AI-OS"
+_DEFAULT_COUNT = 10
+
 COMMITS_PROMPT = (
     "Summarize the following commits into a brief bullet-list of what "
     "changed, grouped logically. End with a one-sentence takeaway for "
@@ -69,9 +73,9 @@ def handle_commits(payload: dict) -> dict:
       output_note: str   - where to write (optional)
       count: int         - number of commits to fetch (default 10)
     """
-    repo_str = payload.get("repo", "v4run/AI-OS")
+    repo_str = payload.get("repo", _DEFAULT_REPO)
     output_note = payload.get("output_note", f"Dev/{repo_str.split('/')[-1]}-commits.md")
-    count = payload.get("count", 10)
+    count = payload.get("count", _DEFAULT_COUNT)
 
     owner, _, repo_name = repo_str.partition("/")
     if not owner or not repo_name:
@@ -98,6 +102,22 @@ def handle_commits(payload: dict) -> dict:
     }
 
 
-def register(event_bus: EventBus, plugin_name: str = "") -> None:
-    """Called once at startup to wire this plugin into the event bus."""
+def register(event_bus: EventBus, plugin_name: str = "", config: dict | None = None) -> None:
+    """Called once at startup to wire this plugin into the event bus.
+
+    config (from the manifest) may provide:
+      default_owner / default_repo  — combined into the default repo
+      default_count                 — number of commits to fetch
+    """
+    global _DEFAULT_REPO, _DEFAULT_COUNT
+    cfg = config or {}
+    owner = cfg.get("default_owner")
+    repo = cfg.get("default_repo")
+    if owner and repo:
+        _DEFAULT_REPO = f"{owner}/{repo}"
+    elif repo:
+        _DEFAULT_REPO = repo
+    if "default_count" in cfg:
+        _DEFAULT_COUNT = int(cfg["default_count"])
+
     event_bus.subscribe("repo.commits.summarize", handle_commits, plugin_name=plugin_name)

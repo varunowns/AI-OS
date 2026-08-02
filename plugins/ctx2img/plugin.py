@@ -100,6 +100,6 @@ def _generate_svg_placeholder(summary: str, style: str = "") -> bytes:
     return svg.encode("utf-8")
 
 
-def register(event_bus: EventBus, plugin_name: str = "") -> None:
+def register(event_bus: EventBus, plugin_name: str = "", config: dict | None = None) -> None:
     """Called once at startup to wire this plugin into the event bus."""
     event_bus.subscribe("note.toimage", handle_toimage, plugin_name=plugin_name)

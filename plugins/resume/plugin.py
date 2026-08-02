@@ -80,6 +80,6 @@ def handle_review(payload: dict) -> dict:
     }
 
 
-def register(event_bus: EventBus, plugin_name: str = "") -> None:
+def register(event_bus: EventBus, plugin_name: str = "", config: dict | None = None) -> None:
     """Called once at startup to wire this plugin into the event bus."""
     event_bus.subscribe("resume.review", handle_review, plugin_name=plugin_name)
