@@ -48,12 +48,23 @@ class TestValidateManifest:
         assert any("kebab-case" in i for i in issues)
 
     def test_name_must_match_dir(self):
-        """A valid manifest's name is checked against the plugin dir at load."""
+        """The manifest name must match its plugin dir."""
         m = _valid_manifest()
         m["name"] = "different"
         m["dir"] = "plugins/sample"
-        # validate_manifest alone checks format, not the dir match; that's the
-        # loader's concern. Here we assert the format check still passes.
+        issues = validate_manifest(m)
+        assert any("does not match the plugin dir" in i for i in issues)
+
+    def test_name_matching_dir_is_valid(self):
+        """A name that matches the dir passes validation."""
+        m = _valid_manifest()
+        m["name"] = "sample"
+        m["dir"] = "plugins/sample"
+        assert validate_manifest(m) == []
+
+    def test_name_dir_match_ignores_absent_dir(self):
+        """validate_manifest without a dir (bare metadata) still checks format."""
+        m = _valid_manifest()
         assert validate_manifest(m) == []
 
     def test_version_not_semver(self):
@@ -195,6 +206,26 @@ class TestLoaderSkipsInvalid:
         metas = discover_plugins(broken_plugins_dir)
         names = {m["name"] for m in metas}
         assert names == {"good", "bad"}
+
+    def test_name_dir_mismatch_is_skipped_not_failed(self, tmp_path: Path):
+        """A name that doesn't match the dir is a validation skip, not an
+        opaque import failure."""
+        real_dir = tmp_path / "real-dir"
+        real_dir.mkdir()
+        (real_dir / "manifest.yaml").write_text(
+            "name: different\nversion: 1.0.0\ndescription: Mismatch\n",
+            encoding="utf-8",
+        )
+        (real_dir / "plugin.py").write_text(
+            "def register(event_bus, plugin_name='', config=None):\n"
+            "    event_bus.subscribe('x.event', lambda p: {}, plugin_name=plugin_name)\n",
+            encoding="utf-8",
+        )
+        report = load_and_register(EventBus(), plugins_dir=tmp_path)
+        assert report.registered == []
+        assert "different" in report.skipped
+        assert "different" not in report.failed
+        assert any("does not match" in s for s in report.skipped["different"])
 
 
 class TestLoaderReportsRegisterFailure:

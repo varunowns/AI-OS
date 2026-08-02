@@ -106,6 +106,13 @@ def validate_manifest(meta: dict) -> list[str]:
         name = name.strip()
         if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", name):
             issues.append(f"name: '{name}' is not kebab-case")
+        else:
+            # The contract requires the manifest name to match its plugin
+            # dir — the loader imports plugin.py from that dir, so a
+            # mismatch would fail opaquely at import time.
+            dir_name = Path(str(meta.get("dir", ""))).name
+            if dir_name and dir_name != name:
+                issues.append(f"name: '{name}' does not match the plugin dir '{dir_name}'")
 
     version = meta.get("version", "")
     if not isinstance(version, str) or not re.fullmatch(r"\d+\.\d+\.\d+", version.strip()):
