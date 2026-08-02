@@ -73,31 +73,16 @@ def build_event_bus() -> EventBus:
     return bus
 
 
-def main():
-    issues = validate_config()
-    if issues:
-        print("Configuration errors:", file=sys.stderr)
-        for i, issue in enumerate(issues, 1):
-            print(f"  {i}. {issue}", file=sys.stderr)
-        print("\nFix these in your .env file and try again.", file=sys.stderr)
-        sys.exit(1)
+def _build_command_map(plugins: list[dict]) -> dict[str, tuple[str, str, dict]]:
+    """Map CLI command names to (event_name, plugin_name, cli_meta).
 
-    # Discover plugins *before* building the bus, so we know the CLI shape
-    plugins = discover_plugins()
-
-    parser = argparse.ArgumentParser(
-        description="AI-OS — personal AI platform over your Obsidian vault"
-    )
-    subparsers = parser.add_subparsers(dest="command", required=True)
-
-    # Map command names to (event_name, plugin_name, cli_meta)
+    Plugins whose manifest violates the contract are excluded from the
+    command map — they are never reachable from the CLI.
+    """
     command_map: dict[str, tuple[str, str, dict]] = {}
-
     for meta in plugins:
         plugin_name = meta["name"]
         if "_parse_error" in meta or validate_manifest(meta):
-            # Skip plugins whose manifest violates the contract — they are
-            # excluded from the CLI command map and never registered.
             continue
         commands_raw = meta.get("commands", "")
         if commands_raw:
@@ -112,8 +97,19 @@ def main():
                 cmd_help = parts[2].strip() if len(parts) > 2 else ""
                 if cmd_name and event_name:
                     command_map[cmd_name] = (event_name, plugin_name, {"help": cmd_help})
+    return command_map
 
-    # Build subparsers from the command map
+
+def _build_parser() -> argparse.ArgumentParser:
+    """Build the full argparse parser (commands + built-ins)."""
+    plugins = discover_plugins()
+    command_map = _build_command_map(plugins)
+
+    parser = argparse.ArgumentParser(
+        description="AI-OS — personal AI platform over your Obsidian vault"
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
     for cmd_name, (event_name, plugin_name, cmd_meta) in sorted(command_map.items()):
         help_text = cmd_meta.get("help") or f"Trigger {event_name} event"
 
@@ -133,11 +129,13 @@ def main():
             sp.add_argument("--out", help="Where to write the digest (optional)")
         elif event_name == "note.toimage":
             sp.add_argument("note", help="Path to the note, relative to vault root")
+            sp.add_argument("--style", default="vector illustration with flat colours",
+                            help="Style hint for the generated image (optional)")
         elif event_name == "note.search":
             sp.add_argument("query", help="Search query")
-        # Many commands support --out
-        # digest has its own arg setup
-        if event_name != "learning.digest":
+        # Most commands support --out; toimage writes to the workspace
+        # and learning.digest declares its own --out.
+        if event_name not in ("learning.digest", "note.toimage"):
             sp.add_argument("--out", help="Where to write the result (optional)")
 
         # search also has --top-k
@@ -151,10 +149,24 @@ def main():
     subparsers.add_parser("serve", help="Start the background scheduler (Hermes)")
     subparsers.add_parser("list-plugins", help="List all loaded plugins, their events, and permissions")
 
+    return parser
+
+
+def main():
+    issues = validate_config()
+    if issues:
+        print("Configuration errors:", file=sys.stderr)
+        for i, issue in enumerate(issues, 1):
+            print(f"  {i}. {issue}", file=sys.stderr)
+        print("\nFix these in your .env file and try again.", file=sys.stderr)
+        sys.exit(1)
+
+    parser = _build_parser()
     args = parser.parse_args()
     bus = build_event_bus()
 
     # --- Route to the right event ---
+    command_map = _build_command_map(discover_plugins())
     if args.command in command_map:
         event_name, _, _ = command_map[args.command]
         payload = {}
@@ -169,6 +181,7 @@ def main():
                 payload["output_note"] = args.out
         elif event_name == "note.toimage":
             payload["source_note"] = args.note
+            payload["style"] = args.style
         elif event_name == "repo.commits.summarize":
             payload["repo"] = args.repo
             payload["count"] = args.count
