@@ -30,6 +30,12 @@ def register_plugin(name: str, permissions: list[str]) -> None:
     _registry[name] = set(permissions)
 
 
+def _reset_registry() -> None:
+    """Clear the plugin registry. Test-only helper so each test starts
+    from a clean registry (load_and_register accumulates across tests)."""
+    _registry.clear()
+
+
 def require(*permissions: str) -> None:
     """
     Decorator for service functions that require certain permissions.

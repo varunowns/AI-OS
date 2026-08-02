@@ -25,7 +25,7 @@ import sqlite3
 
 import pytest
 
-from core.plugin_registry import register_plugin, set_active_plugin
+from core.plugin_registry import _reset_registry, register_plugin, set_active_plugin
 from services import context_service, embedding_service, obsidian_service
 from services.embedding_service import EmbeddingIndex
 from storage.db import NoteIndex, _init_schema
@@ -126,7 +126,9 @@ def isolated_env(monkeypatch, test_vault, test_db) -> None:
     context_service._context_service = None
     obsidian_service._index = None
 
-    # Register the test plugin and make it active for permission checks
+    # Register the test plugin and make it active for permission checks.
+    # The registry is reset first so load_and_register tests start clean.
+    _reset_registry()
     register_plugin("test_plugin", _TEST_PLUGIN_PERMISSIONS)
     set_active_plugin("test_plugin")
     yield

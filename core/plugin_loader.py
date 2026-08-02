@@ -39,6 +39,19 @@ _KNOWN_PERMISSIONS = {"vault:read", "vault:write", "llm:call"}
 _COMMAND_ENTRY_SEPARATOR = ";"
 
 
+def parse_permissions(value: object) -> list[str]:
+    """Normalise a manifest `permissions` value to a list of strings.
+
+    The contract allows either a comma-separated string or a YAML list
+    (see ARCHITECTURE.md). Anything else yields an empty list.
+    """
+    if isinstance(value, str):
+        return [p.strip() for p in value.split(",") if p.strip()]
+    if isinstance(value, list):
+        return [str(p).strip() for p in value if str(p).strip()]
+    return []
+
+
 @dataclass
 class PluginLoadReport:
     """
@@ -110,12 +123,10 @@ def validate_manifest(meta: dict) -> list[str]:
             issues.append(f"{field}: entries must be non-empty strings")
 
     permissions = meta.get("permissions", [])
-    if isinstance(permissions, str):
-        permissions = [p.strip() for p in permissions.split(",") if p.strip()]
-    if not isinstance(permissions, list):
+    if not isinstance(permissions, (str, list)):
         issues.append("permissions: expected a string or list of strings")
     else:
-        unknown = [p for p in permissions if p not in _KNOWN_PERMISSIONS]
+        unknown = [p for p in parse_permissions(permissions) if p not in _KNOWN_PERMISSIONS]
         if unknown:
             issues.append(f"permissions: unknown permissions: {', '.join(sorted(unknown))}")
 
@@ -229,9 +240,10 @@ def load_and_register(event_bus: "EventBus", plugins_dir: Path | None = None) ->
             if not hasattr(module, "register"):
                 raise AttributeError("plugin.py has no register(event_bus) function")
 
-            # Register permissions from manifest before calling register()
-            permissions = meta.get("permissions", "")
-            perm_list = [p.strip() for p in permissions.split(",") if p.strip()]
+            # Register permissions from manifest before calling register().
+            # The manifest contract allows string or list form, so normalise
+            # through parse_permissions (never .split directly).
+            perm_list = parse_permissions(meta.get("permissions", ""))
             register_plugin(plugin_name, perm_list)
 
             module.register(event_bus, plugin_name=plugin_name)

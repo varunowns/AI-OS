@@ -12,8 +12,10 @@ from core.plugin_loader import (
     PluginLoadReport,
     discover_plugins,
     load_and_register,
+    parse_permissions,
     validate_manifest,
 )
+from core.plugin_registry import get_registered_plugins
 
 
 def _valid_manifest() -> dict:
@@ -94,6 +96,30 @@ class TestValidateManifest:
         m = _valid_manifest()
         m["permissions"] = "vault:read, vault:write"
         assert validate_manifest(m) == []
+
+    def test_permissions_as_list(self):
+        m = _valid_manifest()
+        m["permissions"] = ["vault:read", "vault:write"]
+        assert validate_manifest(m) == []
+
+    def test_permissions_wrong_type(self):
+        m = _valid_manifest()
+        m["permissions"] = 42
+        issues = validate_manifest(m)
+        assert any("permissions" in i for i in issues)
+
+    def test_permissions_list_with_unknown(self):
+        m = _valid_manifest()
+        m["permissions"] = ["vault:read", "network:call"]
+        issues = validate_manifest(m)
+        assert any("network:call" in i for i in issues)
+
+    def test_parse_permissions_normalises_forms(self):
+        assert parse_permissions("vault:read, vault:write") == ["vault:read", "vault:write"]
+        assert parse_permissions(["vault:read", "vault:write"]) == ["vault:read", "vault:write"]
+        assert parse_permissions([]) == []
+        assert parse_permissions("") == []
+        assert parse_permissions(42) == []
 
     def test_bad_command_format(self):
         m = _valid_manifest()
@@ -216,6 +242,40 @@ class TestLoaderReportsRegisterFailure:
         report = load_and_register(EventBus(), plugins_dir=dir_with_register_failure)
         assert report.failed["boom"]
         assert "good" in report.registered
+
+
+class TestLoaderListPermissions:
+
+    @pytest.fixture
+    def list_permissions_plugin_dir(self, tmp_path: Path) -> Path:
+        """A valid plugin whose manifest declares permissions as a YAML list."""
+        good = tmp_path / "good"
+        good.mkdir()
+        (good / "manifest.yaml").write_text(
+            "name: good\nversion: 1.0.0\ndescription: List-form permissions\n"
+            "permissions:\n  - vault:read\n  - vault:write\n"
+            "subscribes:\n  - good.event\n",
+            encoding="utf-8",
+        )
+        (good / "plugin.py").write_text(
+            "def register(event_bus, plugin_name=''):\n"
+            "    event_bus.subscribe('good.event', lambda p: {'ok': True}, plugin_name=plugin_name)\n",
+            encoding="utf-8",
+        )
+        return tmp_path
+
+    def test_list_permissions_load_ok(self, list_permissions_plugin_dir: Path):
+        """A plugin declaring permissions as a list must load (not crash)."""
+        bus = EventBus()
+        report = load_and_register(bus, plugins_dir=list_permissions_plugin_dir)
+        assert report.registered == ["good"]
+        assert report.failed == {}
+        assert report.skipped == {}
+
+    def test_list_permissions_registered(self, list_permissions_plugin_dir: Path):
+        """The registry must hold the permissions declared as a list."""
+        load_and_register(EventBus(), plugins_dir=list_permissions_plugin_dir)
+        assert get_registered_plugins().get("good") == {"vault:read", "vault:write"}
 
 
 class TestAllRealPluginsValid:
