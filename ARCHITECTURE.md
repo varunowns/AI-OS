@@ -74,6 +74,11 @@ ai-os/
 The scheduler runs plugin events on a timer. Schedule config is stored in
 `VAULT_PATH/.ai-os/schedules.yaml`. Run with `python main.py serve`.
 
+Each schedule's `last_run` timestamp is persisted in `schedules.yaml`,
+so restarting the daemon does not immediately re-fire every enabled
+schedule — only schedules whose interval has elapsed since their last
+run execute.
+
 Default schedule: daily GitHub commits summary for `varunowns/AI-OS`.
 
 ## Plugin contract

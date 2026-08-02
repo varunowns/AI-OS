@@ -48,7 +48,10 @@ def load_schedules() -> dict[str, Any]:
             yaml.dump(_DEFAULT_SCHEDULES, default_flow_style=False, sort_keys=False),
             encoding="utf-8",
         )
-        return _DEFAULT_SCHEDULES
+        # Return a fresh copy so callers never share the template's dict.
+        return yaml.safe_load(
+            yaml.dump(_DEFAULT_SCHEDULES, default_flow_style=False, sort_keys=False)
+        )
 
     with open(_SCHEDULES_PATH, "r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {"schedules": []}
@@ -74,16 +77,38 @@ def _run_schedule(schedule: dict, bus: EventBus) -> None:
         print(f"[scheduler] Error running '{event}': {exc}")
 
 
+def _run_cycle(data: dict, bus: EventBus, now: float) -> bool:
+    """Run every due schedule in `data`, stamping last_run in place.
+
+    Returns True when any schedule fired (and thus should be persisted).
+    A schedule with no last_run has never run and fires on its first
+    cycle. Per-schedule errors are handled inside _run_schedule.
+    """
+    changed = False
+    for schedule in data.get("schedules", []):
+        if not schedule.get("enabled", True):
+            continue
+
+        interval_h = schedule.get("interval_hours", 24)
+        interval_s = interval_h * 3600
+        last = schedule.get("last_run", 0)
+        if now - last >= interval_s:
+            _run_schedule(schedule, bus)
+            schedule["last_run"] = now
+            changed = True
+    return changed
+
+
 def serve(bus: EventBus, interval_seconds: int = 60, stop_event: threading.Event | None = None) -> None:
     """
     Main scheduler loop. Runs in a background thread, waking every
     `interval_seconds` to check and fire due schedules.
+
+    Each schedule's last-run time is persisted in schedules.yaml, so a
+    restart does not re-fire every enabled schedule immediately.
     """
     if stop_event is None:
         stop_event = threading.Event()
-
-    # Track last run time per schedule id
-    last_run: dict[str, float] = {}
 
     print(f"[scheduler] Started (check interval: {interval_seconds}s)")
 
@@ -91,19 +116,8 @@ def serve(bus: EventBus, interval_seconds: int = 60, stop_event: threading.Event
         now = time.time()
         try:
             data = load_schedules()
-            for schedule in data.get("schedules", []):
-                if not schedule.get("enabled", True):
-                    continue
-
-                sid = schedule["id"]
-                interval_h = schedule.get("interval_hours", 24)
-                interval_s = interval_h * 3600
-
-                last = last_run.get(sid, 0)
-                if now - last >= interval_s:
-                    _run_schedule(schedule, bus)
-                    last_run[sid] = now
-
+            if _run_cycle(data, bus, now):
+                save_schedules(data)
         except Exception as exc:
             print(f"[scheduler] Error in check cycle: {exc}")
 
