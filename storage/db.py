@@ -94,10 +94,17 @@ class NoteIndex:
         self._conn.commit()
 
     def get_notes_by_tag(self, tag: str) -> list[dict[str, Any]]:
-        """Return all notes whose tags field contains `tag`."""
+        """Return all notes whose tags field contains `tag` as a whole tag.
+
+        Tags are stored comma-separated (e.g. "career,summary"), so the
+        match is on comma-delimited boundaries — never a substring. This
+        keeps `learning` from matching `machine-learning` and `career`
+        from matching `non-career`.
+        """
         cursor = self._conn.execute(
-            "SELECT path, title, tags, last_modified, plugin_source FROM notes WHERE tags LIKE ?",
-            (f"%{tag}%",),
+            "SELECT path, title, tags, last_modified, plugin_source FROM notes "
+            "WHERE ',' || tags || ',' LIKE '%,' || ? || ',%'",
+            (tag,),
         )
         return [_row_to_note(r) for r in cursor.fetchall()]
 
