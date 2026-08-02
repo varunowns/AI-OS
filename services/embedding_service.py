@@ -347,8 +347,14 @@ class EmbeddingIndex:
         """
         Semantic search: embed the query, then find the top_k most similar
         notes via brute-force cosine similarity over stored vectors.
+
+        A query that tokenizes to nothing (empty, whitespace, or only
+        single-char/symbol tokens) has no meaning, so it returns no
+        results rather than an arbitrary zero-score match.
         """
         query_vec = self._vectorizer.transform(query)
+        if not np.any(query_vec):
+            return []
 
         rows = self._conn.execute(
             "SELECT path, vector FROM embeddings"

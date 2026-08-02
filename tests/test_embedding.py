@@ -100,6 +100,22 @@ class TestEmbeddingIndex:
         results = embedding_index.search("anything", top_k=5)
         assert isinstance(results, list)
 
+    def test_zero_vector_query_returns_no_results(self, embedding_index: EmbeddingIndex):
+        """A query that tokenizes to nothing must not return arbitrary
+        zero-score matches."""
+        emb = embedding_index
+        emb.index_note("test/cv.md", "Computer vision with MediaPipe")
+        emb.save_state()
+
+        for bad_query in ("", "   ", "a b c !!! ???", "@#$%^&*()"):
+            assert emb.search(bad_query, top_k=5) == [], f"query {bad_query!r} returned results"
+
+    def test_real_query_still_works(self, embedding_index: EmbeddingIndex):
+        emb = embedding_index
+        emb.index_note("test/cv.md", "Computer vision with MediaPipe")
+        emb.save_state()
+        assert len(emb.search("computer vision")) == 1
+
     def test_remove_note(self, embedding_index: EmbeddingIndex):
         emb = embedding_index
         emb.index_note("test/remove.md", "Will be removed")
