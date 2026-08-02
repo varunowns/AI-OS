@@ -172,3 +172,48 @@ def test_reindex_note(test_db, test_vault):
     # Re-index should work
     success = ctx.reindex_note("Test/Reindex.md")
     assert success
+
+
+def test_reindex_all_prunes_deleted_notes(test_db, test_vault):
+    """reindex_all must drop index rows for notes deleted from disk."""
+    ctx = _ctx(test_db, test_vault)
+
+    ctx.write_note("Test/Gone.md", "This note will be deleted", plugin_source="p1")
+    ctx.write_note("Test/Stays.md", "This note stays", plugin_source="p1")
+
+    # Delete the file from the vault directly (simulating external deletion)
+    (test_vault / "Test" / "Gone.md").unlink()
+
+    result = ctx.reindex_all()
+    assert result["indexed"] == 1
+    assert "Test/Gone.md" in result["pruned"]
+    assert ctx.get_note_metadata("Test/Gone.md") is None
+    # Embeddings pruned too
+    paths = ctx._embeddings.get_indexed_paths()
+    assert "Test/Gone.md" not in paths
+
+
+def test_reindex_all_scan_preserves_plugin_source(test_db, test_vault):
+    """Re-scanning the vault must not reset plugin provenance."""
+    ctx = _ctx(test_db, test_vault)
+
+    ctx.write_note("Career/README.md", "Career content", plugin_source="career")
+    result = ctx.reindex_all(scan_vault=True)
+    meta = ctx.get_note_metadata("Career/README.md")
+    assert meta is not None
+    assert meta["plugin_source"] == "career"
+
+
+def test_reindex_all_is_idempotent(test_db, test_vault):
+    """Re-running reindex_all must not inflate corpus statistics."""
+    ctx = _ctx(test_db, test_vault)
+
+    ctx.write_note("Test/A.md", "Machine learning with transformers", plugin_source="p1")
+    ctx.write_note("Test/B.md", "Web development with React", plugin_source="p1")
+
+    n_docs_before = ctx._embeddings._vectorizer._n_docs
+    ctx.reindex_all()
+    assert ctx._embeddings._vectorizer._n_docs == n_docs_before
+
+    ctx.reindex_all()
+    assert ctx._embeddings._vectorizer._n_docs == n_docs_before

@@ -44,6 +44,14 @@ ai-os/
 - **Storage**: SQLite database lives at `VAULT_PATH/.ai-os/metadata.db`.
   The vault's markdown files remain the source of truth — SQLite is a
   searchable index, not a replacement.
+- **Search index is idempotent**: `EmbeddingIndex` tracks each note's
+  tokens in a `doc_tokens` table, so re-indexing an existing note replaces
+  its terms instead of double-counting them (which previously inflated
+  IDF statistics and degraded ranking over time). Corpus stats are
+  reconciled from `doc_tokens` on load, so the in-memory vectorizer always
+  matches the persisted corpus. `reindex` is self-healing: notes that no
+  longer exist on disk are pruned from both the metadata and embedding
+  tables.
 
 ## Event catalog
 

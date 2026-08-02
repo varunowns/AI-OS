@@ -23,12 +23,54 @@ class TestTfIdfVectorizer:
 
     def test_serialisation(self):
         v = _TfIdfVectorizer()
-        v.index_document("apple banana")
-        v.index_document("banana cherry")
+        v.add_document("a", "apple banana")
+        v.add_document("b", "banana cherry")
         blob = v.to_json()
         v2 = _TfIdfVectorizer.from_json(blob)
         assert v2._vocab == v._vocab
-        assert v2._n_docs == v._n_docs
+
+    def test_add_document_replace_is_idempotent(self):
+        """Re-adding a path must not double-count its terms."""
+        v = _TfIdfVectorizer()
+        v.add_document("a", "apple banana")
+        v.add_document("b", "banana cherry")
+        assert v._n_docs == 2
+        assert v._doc_freq["banana"] == 2
+
+        # Re-index "a" — its stats must be unchanged, not incremented
+        v.add_document("a", "apple banana")
+        assert v._n_docs == 2
+        assert v._doc_freq["banana"] == 2
+        assert v._doc_freq["apple"] == 1
+
+        # Rewriting "a" with new content swaps its terms correctly
+        v.add_document("a", "apple apple date")
+        assert v._n_docs == 2
+        assert v._doc_freq["apple"] == 1
+        assert v._doc_freq["banana"] == 1
+        assert v._doc_freq["date"] == 1
+
+    def test_remove_document_decrements(self):
+        v = _TfIdfVectorizer()
+        v.add_document("a", "apple banana")
+        v.add_document("b", "banana cherry")
+        v.remove_document("a")
+        assert v._n_docs == 1
+        assert v._doc_freq["apple"] == 0
+        assert "apple" not in v._doc_freq
+        assert v._doc_freq["banana"] == 1
+
+    def test_set_corpus_recomputes_exactly(self):
+        v = _TfIdfVectorizer()
+        v.add_document("a", "apple banana")
+        v.add_document("b", "apple cherry")
+        # Simulate a corrupt accumulated state
+        v._n_docs = 99
+        v._doc_freq["apple"] = 50
+        v.set_corpus({"a": {"apple", "banana"}, "b": {"apple", "cherry"}})
+        assert v._n_docs == 2
+        assert v._doc_freq["apple"] == 2
+        assert v._doc_freq["banana"] == 1
 
     def test_similar_docs_have_higher_score(self):
         v = _TfIdfVectorizer()
@@ -66,3 +108,50 @@ class TestEmbeddingIndex:
 
         emb.remove_note("test/remove.md")
         assert "test/remove.md" not in emb.get_indexed_paths()
+        # Corpus stats reflect the removal
+        assert emb._vectorizer._n_docs == 0
+        assert emb._vectorizer._doc_freq == {}
+
+    def test_reindex_same_note_is_idempotent(self, embedding_index: EmbeddingIndex):
+        """Re-indexing the same note must not inflate corpus stats."""
+        emb = embedding_index
+        emb.index_note("test/cv.md", "Computer vision with MediaPipe")
+        emb.index_note("test/web.md", "Web development with React")
+        n_docs_before = emb._vectorizer._n_docs
+        df_before = dict(emb._vectorizer._doc_freq)
+
+        emb.index_note("test/cv.md", "Computer vision with MediaPipe")
+        assert emb._vectorizer._n_docs == n_docs_before
+        assert dict(emb._vectorizer._doc_freq) == df_before
+
+    def test_persistence_roundtrip(self, memory_db):
+        """save_state/load must keep corpus stats consistent."""
+        emb = EmbeddingIndex(conn=memory_db)
+        emb.index_note("test/a.md", "apple banana")
+        emb.index_note("test/b.md", "banana cherry")
+        emb.save_state()
+
+        emb2 = EmbeddingIndex(conn=memory_db)
+        assert emb2._vectorizer._n_docs == 2
+        assert emb2._vectorizer._doc_freq["banana"] == 2
+
+    def test_rebuild_from_tokens_prunes_and_recomputes(self, memory_db):
+        """rebuild_from_tokens must correct stale corpus stats and drop
+        doc_tokens rows whose embedding is missing."""
+        emb = EmbeddingIndex(conn=memory_db)
+        emb.index_note("test/a.md", "apple banana")
+        emb.index_note("test/b.md", "banana cherry")
+        emb.save_state()
+
+        # Corrupt stats + add an orphan doc_tokens row
+        emb._vectorizer._n_docs = 99
+        emb._vectorizer._doc_freq["apple"] = 50
+        emb._conn.execute("INSERT INTO doc_tokens VALUES ('ghost.md', 'apple')")
+        emb._conn.commit()
+
+        emb.rebuild_from_tokens()
+        assert emb._vectorizer._n_docs == 2
+        assert emb._vectorizer._doc_freq["apple"] == 1
+        assert emb._vectorizer._doc_freq["banana"] == 2
+        # Orphan pruned
+        assert "ghost.md" not in emb._vectorizer.all_docs()

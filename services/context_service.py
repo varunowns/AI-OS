@@ -159,15 +159,27 @@ class ContextService:
         vault and indexes them in SQLite metadata + embeddings, including
         notes not created by AI-OS. When False, only re-indexes notes
         already present in the SQLite notes table.
+
+        Stale rows are self-healing: notes that no longer exist on disk
+        are pruned from both the metadata and embedding indexes, and the
+        corpus statistics are reconciled so a reindex never double-counts.
         """
         if scan_vault:
             vault_notes = obsidian_service.scan_vault()
             for note in vault_notes:
+                # Preserve provenance for notes already written by a
+                # plugin; a plain re-scan otherwise resets it to "".
+                existing_meta = self._notes.get_note(note["path"])
+                plugin_source = (
+                    existing_meta.get("plugin_source", "")
+                    if existing_meta
+                    else ""
+                )
                 self._notes.index_note(
                     path=note["path"],
                     title=note["title"],
                     tags=note["tags"],
-                    plugin_source="",
+                    plugin_source=plugin_source,
                 )
 
         paths = self._notes.get_all_paths()
@@ -181,6 +193,17 @@ class ContextService:
             except Exception as exc:
                 errors.append({"path": path, "error": str(exc)})
 
+        # Prune index rows for notes that no longer exist on disk.
+        stale = [p for p in paths if not self.note_exists(p)]
+        for path in stale:
+            self._notes.delete_note(path)
+            self._embeddings.remove_note(path)
+        if stale:
+            errors.append({
+                "path": ", ".join(stale),
+                "error": "removed from index (note no longer on disk)",
+            })
+
         self._embeddings.save_state()
 
         return {
@@ -188,6 +211,7 @@ class ContextService:
             "indexed": indexed,
             "errors": errors,
             "total_requested": len(paths),
+            "pruned": stale,
         }
 
     def reindex_note(self, relative_path: str) -> bool:
