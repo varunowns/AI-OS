@@ -1,7 +1,7 @@
 """
 Obsidian Service
 ----------------
-Treats your existing Obsidian vault as AI-OS's permanent memory,
+Treats your existing Obsidian vault as Nordrun's permanent memory,
 per the constitution rule "Obsidian is source of truth."
 
 Provides vault read/write, frontmatter parsing, and vault scanning.
@@ -178,10 +178,10 @@ def scan_vault() -> list[dict]:
     """Walk the vault and return metadata for every .md file found.
 
     Returns a list of dicts with: path, title, tags, last_modified.
-    Skips hidden directories and the .ai-os metadata folder.
+    Skips hidden directories and the .nordrun metadata folder.
     """
     notes = []
-    skip_dirs = {".ai-os", ".obsidian", ".git", "__pycache__", "node_modules", ".trash", ".DS_Store"}
+    skip_dirs = {".nordrun", ".obsidian", ".git", "__pycache__", "node_modules", ".trash", ".DS_Store"}
 
     for md_file in sorted(VAULT_PATH.rglob("*.md")):
         rel = md_file.relative_to(VAULT_PATH)

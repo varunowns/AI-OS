@@ -80,7 +80,7 @@ class TestFetchCommitsParsing:
             return Resp()
 
         monkeypatch.setattr(gh.urllib.request, "urlopen", fake_urlopen)
-        commits = gh._fetch_commits("v4run", "AI-OS", count=5)
+        commits = gh._fetch_commits("varunowns", "Nordrun", count=5)
         assert commits == [{"sha": "abcdef1", "message": "Header line", "author": "Varun"}]
 
     def test_http_error_raises_runtime_error(self, monkeypatch):

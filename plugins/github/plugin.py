@@ -8,8 +8,8 @@ Matches the same plugin shape as career/: manifest.yaml + plugin.py
 with a register(event_bus) function.
 
 Usage:
-    python main.py commits "v4run/AI-OS"
-    python main.py commits "v4run/AI-OS" --out "Dev/AI-OS-commits.md"
+    python main.py commits "varunowns/Nordrun"
+    python main.py commits "varunowns/Nordrun" --out "Dev/Nordrun-commits.md"
 """
 
 import urllib.request
@@ -25,7 +25,7 @@ from services.context_service import get_context
 GITHUB_API = "https://api.github.com"
 
 # Defaults drawn from the manifest's config; populated by register().
-_DEFAULT_REPO = "v4run/AI-OS"
+_DEFAULT_REPO = "varunowns/Nordrun"
 _DEFAULT_COUNT = 10
 
 COMMITS_PROMPT = (

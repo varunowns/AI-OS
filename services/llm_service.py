@@ -23,7 +23,7 @@ def _get_client() -> Anthropic:
         api_key = LLM_API_KEY or ANTHROPIC_API_KEY
         if not api_key:
             raise RuntimeError(
-                "No API key configured. Set ANTHROPIC_API_KEY or AI_OS_LLM_API_KEY in your .env file."
+                "No API key configured. Set ANTHROPIC_API_KEY or NORDRUN_LLM_API_KEY in your .env file."
             )
         kwargs = {"api_key": api_key}
         if LLM_BASE_URL:

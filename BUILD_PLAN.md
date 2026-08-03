@@ -1,4 +1,4 @@
-# AI-OS — Full Build Plan (Claude Code Prompt Playbook)
+# Nordrun — Full Build Plan (Claude Code Prompt Playbook)
 
 Run these prompts **in order**, one at a time, inside Claude Code at the
 repo root. Each one builds on working code from the last — don't skip
@@ -62,7 +62,7 @@ Core event bus, Obsidian read/write service, LLM service, career plugin.
 ## Phase 9 — CLI polish + config validation
 > "Improve main.py: auto-generate subcommands from loaded plugins'
 > manifests instead of hardcoding 'summarize'. Validate .env config on
-> startup and give a clear error if AI_OS_VAULT_PATH or
+> startup and give a clear error if NORDRUN_VAULT_PATH or
 > ANTHROPIC_API_KEY is missing or invalid."
 
 ## Phase 10 — Scheduler / automation (Hermes)
@@ -97,7 +97,7 @@ Core event bus, Obsidian read/write service, LLM service, career plugin.
 
 ## After Phase 12
 
-At this point you'll have a genuinely functional AI-OS: plugins,
+At this point you'll have a genuinely functional Nordrun: plugins,
 permissions, scheduling, semantic search, and multiple real workflows.
 Further plugins (linkedin, portfolio, interview, jobs, docker, terminal,
 git, calendar, email, notifications) all now follow the exact same

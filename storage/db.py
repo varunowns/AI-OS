@@ -20,7 +20,7 @@ from typing import Any
 
 from config import VAULT_PATH
 
-_DB_PATH = VAULT_PATH / ".ai-os" / "metadata.db"
+_DB_PATH = VAULT_PATH / ".nordrun" / "metadata.db"
 _local = threading.local()
 
 

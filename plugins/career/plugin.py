@@ -1,7 +1,7 @@
 """
 Career Plugin
 -------------
-The first real AI-OS plugin. Deliberately does one thing:
+The first real Nordrun plugin. Deliberately does one thing:
 
   1. Read a note from the vault
   2. Ask Claude to summarize it + extract action items

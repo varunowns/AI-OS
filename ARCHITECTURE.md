@@ -3,7 +3,7 @@
 ## Current
 
 ```
-ai-os/
+nordrun/
 ├── config.py                  # Environment-based settings
 ├── main.py                    # CLI entrypoint, auto-discovers plugins
 ├── core/
@@ -45,7 +45,7 @@ ai-os/
   and `EmbeddingIndex` (semantic search). New plugins should prefer
   `from services.context_service import get_context` over importing
   individual services.
-- **Storage**: SQLite database lives at `VAULT_PATH/.ai-os/metadata.db`.
+- **Storage**: SQLite database lives at `VAULT_PATH/.nordrun/metadata.db`.
   The vault's markdown files remain the source of truth — SQLite is a
   searchable index, not a replacement.
 - **Search index is idempotent**: `EmbeddingIndex` tracks each note's
@@ -72,14 +72,14 @@ ai-os/
 ## Scheduler (Hermes)
 
 The scheduler runs plugin events on a timer. Schedule config is stored in
-`VAULT_PATH/.ai-os/schedules.yaml`. Run with `python main.py serve`.
+`VAULT_PATH/.nordrun/schedules.yaml`. Run with `python main.py serve`.
 
 Each schedule's `last_run` timestamp is persisted in `schedules.yaml`,
 so restarting the daemon does not immediately re-fire every enabled
 schedule — only schedules whose interval has elapsed since their last
 run execute.
 
-Default schedule: daily GitHub commits summary for `varunowns/AI-OS`.
+Default schedule: daily GitHub commits summary for `varunowns/Nordrun`.
 
 ## Plugin contract
 
@@ -112,10 +112,10 @@ Both accept a custom directory for testing.
 - **One milestone at a time**: No speculative architecture. Each piece is
   built only when a real plugin needs it.
 - **Plugin contract over convention**: manifests are validated at load time
-  (see `Projects/AI-OS/Decisions/ADR-005` in the vault). Invalid contracts
+  (see `Projects/Nordrun/Decisions/ADR-005` in the vault). Invalid contracts
   are skipped loudly, never half-loaded.
 - **Python over TypeScript**: Best library fit for markdown/SQLite/LLM SDKs.
-  See `Projects/AI-OS/Decisions/ADR-001` in the vault.
+  See `Projects/Nordrun/Decisions/ADR-001` in the vault.
 - **Vertical slice first**: One working plugin before full architecture.
   See ADR-002.
 - **Semantic search before CLI polish**: Real content from multiple plugins

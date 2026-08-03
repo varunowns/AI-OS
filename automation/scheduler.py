@@ -3,7 +3,7 @@ Scheduler / Automation (Hermes)
 --------------------------------
 Runs plugin events on a schedule using a simple background loop (no
 external scheduler dependency). Schedule config is stored in
-schedules.yaml in the vault's .ai-os/ directory.
+schedules.yaml in the vault's .nordrun/ directory.
 
 Usage:
     python main.py serve
@@ -23,7 +23,7 @@ import yaml
 from config import VAULT_PATH
 from core.event_bus import EventBus
 
-_SCHEDULES_PATH = VAULT_PATH / ".ai-os" / "schedules.yaml"
+_SCHEDULES_PATH = VAULT_PATH / ".nordrun" / "schedules.yaml"
 
 # Default schedules — created as a template on first run
 _DEFAULT_SCHEDULES = {
@@ -32,7 +32,7 @@ _DEFAULT_SCHEDULES = {
             "id": "daily-github-commits",
             "label": "Daily GitHub commits summary",
             "event": "repo.commits.summarize",
-            "payload": {"repo": "varunowns/AI-OS", "count": 5},
+            "payload": {"repo": "varunowns/Nordrun", "count": 5},
             "interval_hours": 24,
             "enabled": True,
         },

@@ -163,7 +163,7 @@ class ContextService:
 
         When scan_vault is True, first discovers all .md files in the
         vault and indexes them in SQLite metadata + embeddings, including
-        notes not created by AI-OS. When False, only re-indexes notes
+        notes not created by Nordrun. When False, only re-indexes notes
         already present in the SQLite notes table.
 
         Stale rows are self-healing: notes that no longer exist on disk

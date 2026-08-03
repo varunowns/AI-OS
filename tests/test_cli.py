@@ -66,7 +66,7 @@ class TestOutFlagPresence:
 
     def test_commits_has_out(self):
         parser = _build_parser()
-        args = parser.parse_args(["commits", "v4run/AI-OS", "--count", "5", "--out", "out.md"])
+        args = parser.parse_args(["commits", "varunowns/Nordrun", "--count", "5", "--out", "out.md"])
         assert args.out == "out.md"
         assert args.count == 5
 

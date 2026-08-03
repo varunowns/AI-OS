@@ -3,5 +3,5 @@ __pycache__/
 .env
 .pytest_cache/
 *.db
-.ai-os/
+.nordrun/
 workspace/

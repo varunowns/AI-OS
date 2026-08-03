@@ -1,6 +1,6 @@
 """
-AI-OS entrypoint (vertical slice)
-----------------------------------
+Nordrun entrypoint (vertical slice)
+-----------------------------------
 Wires up the event bus via auto-discovery, and auto-generates CLI
 subcommands from each plugin's CLI_COMMANDS metadata — no more
 hardcoding commands in main.py.
@@ -30,23 +30,23 @@ from core.plugin_registry import get_registered_plugins
 def validate_config() -> list[str]:
     """Check critical config values and return a list of issues."""
     issues = []
-    vault = os.environ.get("AI_OS_VAULT_PATH", "")
+    vault = os.environ.get("NORDRUN_VAULT_PATH", "")
     if not vault:
-        issues.append("AI_OS_VAULT_PATH is not set. Add it to your .env file "
-                       "(e.g. AI_OS_VAULT_PATH=V:/Obsidian/Obsidian Vault)")
+        issues.append("NORDRUN_VAULT_PATH is not set. Add it to your .env file "
+                       "(e.g. NORDRUN_VAULT_PATH=V:/Obsidian/Obsidian Vault)")
     else:
         from pathlib import Path
         if not Path(vault).is_dir():
-            issues.append(f"AI_OS_VAULT_PATH={vault} does not exist or is not a directory")
+            issues.append(f"NORDRUN_VAULT_PATH={vault} does not exist or is not a directory")
 
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    proxy_key = os.environ.get("AI_OS_LLM_API_KEY", "")
-    proxy_url = os.environ.get("AI_OS_LLM_BASE_URL", "")
+    proxy_key = os.environ.get("NORDRUN_LLM_API_KEY", "")
+    proxy_url = os.environ.get("NORDRUN_LLM_BASE_URL", "")
     if not api_key and not proxy_key:
         issues.append("No LLM API key configured. Set ANTHROPIC_API_KEY or "
-                       "AI_OS_LLM_API_KEY in your .env file")
+                       "NORDRUN_LLM_API_KEY in your .env file")
     if proxy_url and not proxy_key:
-        issues.append("AI_OS_LLM_BASE_URL is set but AI_OS_LLM_API_KEY is missing")
+        issues.append("NORDRUN_LLM_BASE_URL is set but NORDRUN_LLM_API_KEY is missing")
     if not proxy_url and not api_key:
         # No proxy and no key — that's already caught above
         pass
@@ -106,7 +106,7 @@ def _build_parser() -> argparse.ArgumentParser:
     command_map = _build_command_map(plugins)
 
     parser = argparse.ArgumentParser(
-        description="AI-OS — personal AI platform over your Obsidian vault"
+        description="Nordrun — personal AI platform over your Obsidian vault"
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -120,8 +120,8 @@ def _build_parser() -> argparse.ArgumentParser:
         if event_name in ("note.summarize", "note.review", "resume.review"):
             sp.add_argument("note", help="Path to the note, relative to vault root")
         elif event_name == "repo.commits.summarize":
-            sp.add_argument("repo", nargs="?", default="varunowns/AI-OS",
-                            help="owner/repo (default: varunowns/AI-OS)")
+            sp.add_argument("repo", nargs="?", default="varunowns/Nordrun",
+                            help="owner/repo (default: varunowns/Nordrun)")
             sp.add_argument("--count", type=int, default=10,
                             help="Number of commits to fetch (default: 10)")
         elif event_name == "learning.digest":
@@ -145,7 +145,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # Add built-in commands not driven by plugins
     reindex_parser = subparsers.add_parser("reindex", help="Re-index all vault notes for semantic search")
-    reindex_parser.add_argument("--scan-vault", action="store_true", help="Also scan vault for new notes not created by AI-OS")
+    reindex_parser.add_argument("--scan-vault", action="store_true", help="Also scan vault for new notes not created by Nordrun")
     subparsers.add_parser("serve", help="Start the background scheduler (Hermes)")
     subparsers.add_parser("list-plugins", help="List all loaded plugins, their events, and permissions")
 

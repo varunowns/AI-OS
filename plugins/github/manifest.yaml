@@ -18,5 +18,5 @@ commands: commits:repo.commits.summarize:Summarize recent GitHub commits
 # Permissions this plugin declares
 permissions: vault:read, vault:write, llm:call
 config:
-  default_repo: AI-OS
+  default_repo: Nordrun
   default_owner: v4run

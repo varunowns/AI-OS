@@ -1,8 +1,8 @@
-# AI-OS — Personal AI Platform
+# Nordrun — Personal AI Platform
 
-AI-OS is a personal platform that treats an Obsidian vault as permanent
-memory and exposes functionality through small plugins that subscribe
-to events on a shared event bus.
+Nordrun is an autonomous AI operating system: a personal platform that
+treats an Obsidian vault as permanent memory and exposes functionality
+through small plugins that subscribe to events on a shared event bus.
 
 ## What it does
 
@@ -41,7 +41,7 @@ implementation.
 ## Architecture
 
 ```
-ai-os/
+nordrun/
 ├── config.py                  # Environment-based settings
 ├── main.py                    # CLI entrypoint, auto-discovers plugins
 ├── core/
@@ -79,7 +79,7 @@ ai-os/
 ```bash
 pip install -r requirements.txt
 cp .env.example .env
-# edit .env: set AI_OS_VAULT_PATH to your vault, and ANTHROPIC_API_KEY
+# edit .env: set NORDRUN_VAULT_PATH to your vault, and ANTHROPIC_API_KEY
 ```
 
 ## Built-in commands

@@ -72,7 +72,7 @@ def test_vault(tmp_path):
     """A small Obsidian-style vault standing in for the real one.
 
     Seeded with a few markdown notes so scan_vault() and plugin reads
-    have content to work with. No .ai-os folder is needed — tests use
+    have content to work with. No .nordrun folder is needed — tests use
     the in-memory test_db instead of a file-backed metadata DB.
     """
     (tmp_path / "Career").mkdir()
